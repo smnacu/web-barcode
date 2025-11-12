@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Barcode Scanner</title>
+    
+    <link rel="stylesheet" href="css/styles.css?v=1.5">
+    
+    <!-- PDF.js 100% Offline -->
+    <script src="js/libs/pdf.min.js"></script>
+    <script src="js/libs/pdf.worker.min.js"></script>
+
+</head>
+<body>
+    
+    <!-- Vista Principal del Scanner -->
+    <div id="scanner-view-container" class="container">
+        <header>
+            <div class="header-content">
+                <h1>Web Barcode Scanner</h1>
+                <p class="subtitle">Sistema Offline - Red LAN</p>
+            </div>
+            <div class="header-actions">
+                <button id="settings-btn" class="btn btn-sm btn-primary">Configuración</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <section class="search-section">
+                <div class="manual-input">
+                    <input 
+                        type="text" 
+                        id="manualCodeInput" 
+                        placeholder="Ingresa codigo o EAN manualmente"
+                        autocomplete="off"
+                    >
+                    <button id="manualCodeButton" class="btn btn-primary">Buscar</button>
+                </div>
+                
+                <div id="scanner-region" class="scanner-region">
+                    <div class="scanner-placeholder">
+                        Permite acceso a la camara para escanear codigos
+                    </div>
+                </div>
+
+                <div id="log-container" class="log-container"></div>
+            </section>
+
+            <section class="history-section">
+                <div class="history-header">
+                    <h3>Historial de Escaneos</h3>
+                    <button id="limpiar-historial" class="btn btn-danger btn-sm">
+                        Limpiar Historial
+                    </button>
+                </div>
+                <div id="historial-container" class="history-list"></div>
+            </section>
+        </div>
+
+        <footer>
+            <p>Web Barcode Scanner v1.0</p>
+        </footer>
+    </div> <!-- Fin de #scanner-view-container -->
+
+    <section id="result-view-container" class="result-section">
+        
+        <header id="result-header" class="result-header">
+            <div id="ficha-info">
+            </div>
+            <button id="scan-new-button" class="btn btn-success">
+                <span>Escanear Otro</span>
+            </button>
+        </header>
+
+        <div id="pdf-viewer-container" class="pdf-viewer">
+            <div id="pdf-controls" class="pdf-controls">
+                <button id="pdf-prev" class="btn btn-sm btn-primary">&lt; Anterior</button>
+                <span>Página: <span id="pdf-page-num"></span> / <span id="pdf-page-count"></span></span>
+                <button id="pdf-next" class="btn btn-sm btn-primary">Siguiente &gt;</button>
+            </div>
+            <canvas id="pdf-canvas"></canvas>
+        </div>
+
+    </section>
+
+
+    <!-- Modal de Configuración (Sin cambios) -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Configuración</h3>
+            <div id="camera-selector-wrapper">
+                <p>No se encontraron cámaras o no hay permisos.</p>
+            </div>
+            <button id="settings-close-btn" class="btn btn-primary">Cerrar</button>
+        </div>
+    </div>
+
+    <script src="js/libs/html5-qrcode.min.js"></script>
+    <script src="js/scanner.js?v=1.5"></script>
+</body>
+</html>
