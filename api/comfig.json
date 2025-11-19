@@ -1,0 +1,5 @@
+{
+    "ruta_csv": "../csv/Libro.csv",
+    "ruta_pdf": "../Pdf/",
+    "timeout_segundos": 30
+}

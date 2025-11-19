@@ -1,387 +1,203 @@
 :root {
-    --primary-color: #2563eb;
-    --success-color: #16a34a;
-    --danger-color: #dc2626;
-    --warning-color: #f59e0b;
-    --bg-light: #f8fafc;
-    --bg-white: #ffffff;
-    --text-dark: #1e293b;
-    --text-light: #64748b;
-    --border-color: #e2e8f0;
-    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --primary: #2563eb;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --bg: #f8fafc;
+  --white: #fff;
+  --dark: #1e293b;
+  --light: #64748b;
+  --border: #e2e8f0;
 }
-
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    /* ¡CAMBIO! Usamos un fondo más simple para la vista de resultado */
-    background: var(--bg-light);
-    min-height: 100vh;
-    padding: 0; /* Sin padding en el body */
-    color: var(--text-dark);
+  font-family: -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--dark);
+  min-height: 100vh;
 }
 
-/* El .container ahora solo envuelve la vista del scanner */
 .container {
-    max-width: 800px;
-    margin: 20px auto; /* Centrado con margen */
-    background: var(--bg-white);
-    border-radius: 16px;
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
+  max-width: 800px;
+  margin: 20px auto;
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
-
 header {
-    padding: 24px;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-
 header h1 {
-    font-size: 1.8em;
-    font-weight: 700;
-    margin-bottom: 4px;
+  font-size: 1.4em;
+  margin: 0;
 }
-
 .subtitle {
-    font-size: 0.9em;
-    color: var(--text-light);
-}
-
-#scanner-view-container {
-    display: block; /* Visible por defecto */
+  font-size: 0.8em;
+  color: var(--light);
 }
 
 .main-content {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
-
-section {
-    width: 100%;
-}
-
-/* --- Search Section --- */
-.search-section {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
 .manual-input {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
 }
-
 #manualCodeInput {
-    flex-grow: 1;
-    padding: 12px 16px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1em;
-    transition: all 0.3s ease;
+  flex-grow: 1;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
-
-#manualCodeInput:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-}
-
 .btn {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    white-space: nowrap; /* Para que no se rompa el texto del botón */
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+  text-decoration: none;
 }
-
 .btn-primary {
-    background-color: var(--primary-color);
-    color: white;
+  background: var(--primary);
 }
-.btn-primary:hover {
-    background-color: #1d4ed8;
-}
-
 .btn-success {
-    background-color: var(--success-color);
-    color: white;
+  background: var(--success);
 }
-.btn-success:hover {
-    background-color: #14532d;
-}
-
 .btn-danger {
-    background-color: var(--danger-color);
-    color: white;
-}
-.btn-danger:hover {
-    background-color: #991b1b;
+  background: var(--danger);
 }
 .btn-sm {
-    padding: 8px 12px;
-    font-size: 0.85em;
-}
-
-.camera-selector {
-    display: none; 
-    padding: 10px;
-    background: var(--bg-light);
-    border-radius: 8px;
-    text-align: center;
-}
-
-.camera-selector label {
-    margin-right: 10px;
-    font-weight: 500;
+  padding: 5px 10px;
+  font-size: 0.9em;
 }
 
 .scanner-region {
-    width: 100%;
-    min-height: 250px;
-    background: #000;
-    border-radius: 8px;
-    display: none; 
-    overflow: hidden; 
+  width: 100%;
+  min-height: 250px;
+  background: #000;
+  border-radius: 8px;
+  display: none;
+  overflow: hidden;
 }
-
 .scanner-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 250px;
-    color: #999;
-    background: #f0f0f0;
-    border-radius: 8px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ddd;
+  color: #666;
 }
 
-#scanner-region > video {
-    width: 100% !important;
-    height: auto !important;
-}
-
-.log-container {
-    max-height: 150px;
-    overflow-y: auto;
-    background: #333;
-    color: #eee;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.85em;
-    padding: 15px;
-    border-radius: 8px;
-}
-
-.log-entry {
-    padding-bottom: 5px;
-    border-bottom: 1px dotted #555;
-    margin-bottom: 5px;
-}
-
-/* --- ¡CAMBIO! Result Section Optimizada --- */
 .result-section {
-    display: none; /* Oculta por defecto */
-    width: 100%;
-    height: 100vh; /* Ocupa toda la altura de la pantalla */
-    background: var(--bg-white);
-    
-    /* Flex-column para poner el header arriba y el visor abajo */
-    display: none; 
-    flex-direction: column;
+  display: none;
+  width: 100%;
+  height: 100vh;
+  background: var(--white);
+  flex-direction: column;
 }
-
 .result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    background: var(--bg-light);
-    border-bottom: 1px solid var(--border-color);
-    flex-shrink: 0; /* Para que no se achique */
+  padding: 15px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-
-#ficha-info {
-    font-size: 0.9em;
-    color: var(--text-light);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-right: 15px;
-}
-
-#ficha-info strong {
-    color: var(--text-dark);
-    font-weight: 600;
-}
-
-#scan-new-button {
-    margin-top: 0; /* Reseteo de margen */
-    font-size: 0.9em;
-    padding: 10px 15px;
-}
-
-/* El .product-card ya no se usa, lo dejamos por las dudas */
-.product-card {
-    display: none;
-}
-
-/* --- Estilos para el PDF (AHORA ES LA ESTRELLA) --- */
 .pdf-viewer {
-    display: none; /* Oculto por defecto */
-    width: 100%;
-    /* ¡CAMBIO! flex-grow hace que ocupe todo el espacio restante */
-    flex-grow: 1; 
-    border: none;
-    overflow: hidden; 
-    background: #525659;
-    
-    /* Flex-column para controles y canvas */
-    display: none;
-    flex-direction: column;
+  display: none;
+  flex-grow: 1;
+  flex-direction: column;
+  background: #525659;
+  overflow: hidden;
 }
-
 .pdf-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    background: var(--bg-light);
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-dark);
-    font-size: 0.9em;
-    flex-shrink: 0; /* No se achica */
+  padding: 10px;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #ccc;
 }
-
 #pdf-canvas {
-    width: 100%;
-    height: auto;
-    /* ¡CAMBIO! Hacemos que el canvas sea scrolleable */
-    overflow: auto; 
-    flex-grow: 1; /* Ocupa el espacio restante */
+  max-width: 100%;
+  height: auto;
 }
 
-
-/* --- History Section --- */
 .history-section {
-    border-top: 1px solid var(--border-color);
-    padding-top: 24px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
 }
-
 .history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
 }
-
-.history-header h3 {
-    font-size: 1.3em;
-    color: var(--text-dark);
-}
-
 .history-list {
-    display: grid;
-    gap: 12px;
+  display: grid;
+  gap: 10px;
 }
-
 .history-item {
-    background: var(--bg-light);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 16px;
-    font-size: 0.9em;
-    transition: all 0.3s ease;
-    cursor: pointer; 
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
 }
-
-.history-item:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--shadow);
-}
-
-.history-item strong {
-    display: block;
-    font-size: 1.1em;
-    color: var(--text-dark);
-    margin-bottom: 6px;
-}
-
-.history-item small {
-    display: block;
-    color: var(--text-light);
-    margin-bottom: 6px;
-}
-
-.history-item span {
-    display: block;
-    color: var(--text-dark);
-}
-
 .history-empty {
-    text-align: center;
-    color: var(--text-light);
-    padding: 40px;
-    font-size: 0.95em;
+  text-align: center;
+  color: var(--light);
+  padding: 20px;
 }
-
 footer {
-    background: var(--bg-light);
-    text-align: center;
-    padding: 20px;
-    font-size: 0.9em;
-    color: var(--text-light);
-    border-top: 1px solid var(--border-color);
-    border-radius: 0 0 16px 16px;
+  text-align: center;
+  padding: 15px;
+  color: var(--light);
+  font-size: 0.8em;
+  border-top: 1px solid var(--border);
 }
 
-/* --- Modal de Configuración --- */
-.modal-overlay {
-    display: none; 
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 100;
-    justify-content: center;
-    align-items: center;
+/* Settings */
+.settings-container {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 25px;
+  background: var(--white);
+  border-radius: 12px;
 }
-
-.modal-content {
-    background: var(--bg-white);
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    width: 90%;
-    max-width: 500px;
-    text-align: center;
+.form-group {
+  margin-bottom: 20px;
 }
-
-.modal-content h3 {
-    font-size: 1.5em;
-    margin-bottom: 20px;
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
 }
-
-#camera-selector-wrapper {
-    margin-bottom: 20px;
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
 }
-
-#camera-selector-container {
-    display: block; 
-    padding: 0;
-    background: none;
+.status-msg {
+  font-size: 0.9em;
+  margin-top: 5px;
+  font-weight: 600;
+}
+.status-msg.success {
+  color: var(--success);
+}
+.status-msg.error {
+  color: var(--danger);
 }
