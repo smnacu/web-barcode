@@ -1,10 +1,44 @@
 <?php
+session_start();
 header('Content-Type: application/json; charset=utf-8');
 
 $configFile = __DIR__ . '/config.json';
 $csvDefaultPath = __DIR__ . '/../csv/Libro.csv';
+$csvDir = __DIR__ . '/../csv/';
 
 $action = $_REQUEST['action'] ?? '';
+
+// Public Authentication Actions
+if ($action === 'login') {
+    $pass = $_POST['password'] ?? '';
+    if ($pass === 'queija1234') {
+        $_SESSION['logged_in'] = true;
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'msg' => 'Contraseña incorrecta']);
+    }
+    exit;
+}
+
+if ($action === 'logout') {
+    session_destroy();
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'check_auth') {
+    echo json_encode(['logged_in' => isset($_SESSION['logged_in']) && $_SESSION['logged_in']]);
+    exit;
+}
+
+// Middleware: Require Login for all other actions
+if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'msg' => 'No autorizado']);
+    exit;
+}
+
+// Protected Actions
 
 if ($action === 'get_config') {
     if (file_exists($configFile)) {
@@ -88,4 +122,61 @@ if ($action === 'upload_csv') {
     }
     exit;
 }
+
+// New CSV Management Actions
+
+if ($action === 'list_csvs') {
+    $files = glob($csvDir . '*.csv');
+    $list = [];
+    foreach ($files as $f) {
+        $list[] = basename($f);
+    }
+    echo json_encode(['success' => true, 'files' => $list]);
+    exit;
+}
+
+if ($action === 'read_csv') {
+    $filename = $_POST['filename'] ?? '';
+    // Security check to prevent directory traversal
+    if (strpos($filename, '/') !== false || strpos($filename, '\\') !== false) {
+        echo json_encode(['success' => false, 'msg' => 'Nombre de archivo invalido']);
+        exit;
+    }
+
+    $path = $csvDir . $filename;
+    if (file_exists($path)) {
+        $content = file_get_contents($path);
+        echo json_encode(['success' => true, 'content' => $content]);
+    } else {
+        echo json_encode(['success' => false, 'msg' => 'Archivo no encontrado']);
+    }
+    exit;
+}
+
+if ($action === 'save_csv_data') {
+    $filename = $_POST['filename'] ?? '';
+    $content = $_POST['content'] ?? '';
+
+    if (strpos($filename, '/') !== false || strpos($filename, '\\') !== false) {
+        echo json_encode(['success' => false, 'msg' => 'Nombre de archivo invalido']);
+        exit;
+    }
+
+    $path = $csvDir . $filename;
+
+    // Ensure we are writing to an existing file or creating a new one in the allowed dir
+    // For now, let's enforce that we only edit existing files or ones with .csv extension
+    if (pathinfo($path, PATHINFO_EXTENSION) !== 'csv') {
+        echo json_encode(['success' => false, 'msg' => 'Solo se permiten archivos .csv']);
+        exit;
+    }
+
+    if (file_put_contents($path, $content) !== false) {
+        echo json_encode(['success' => true, 'msg' => 'Archivo guardado correctamente']);
+    } else {
+        echo json_encode(['success' => false, 'msg' => 'Error al guardar archivo']);
+    }
+    exit;
+}
+
 ?>
