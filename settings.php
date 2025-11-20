@@ -5,10 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuracion Daruma</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Login styles */
+        #loginSection {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #settingsSection {
+            display: none;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
 </head>
 <body style="background: #f3f4f6;">
-<div class="settings-container">
-    <a href="index.html" style="color: var(--primary); text-decoration: none; font-weight: 700;">&larr; Volver</a>
+
+<!-- LOGIN SECTION -->
+<div id="loginSection">
+    <h2>Acceso Admin</h2>
+    <p>Ingrese contraseña para continuar</p>
+    <form id="loginForm">
+        <div class="form-group">
+            <input type="password" id="adminPassword" name="password" placeholder="Contraseña" required style="width: 100%; padding: 10px; margin-bottom: 10px;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar</button>
+        </div>
+        <div id="loginMsg" class="status-msg"></div>
+    </form>
+    <div style="margin-top: 20px;">
+        <a href="index.html" style="color: var(--primary); text-decoration: none;">&larr; Volver al Scanner</a>
+    </div>
+</div>
+
+<!-- SETTINGS SECTION -->
+<div id="settingsSection" class="settings-container">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <a href="index.html" style="color: var(--primary); text-decoration: none; font-weight: 700;">&larr; Volver</a>
+        <button id="logoutBtn" class="btn btn-secondary" style="padding: 5px 10px;">Cerrar Sesión</button>
+    </div>
+
     <h1>Panel de Control</h1>
     <p class="subtitle">Configuracion del sistema</p>
     <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
@@ -59,34 +99,128 @@
 
 <script>
     const API_URL = 'api/admin.php';
+
     document.addEventListener('DOMContentLoaded', () => {
-        fetch(API_URL + '?action=get_config').then(r => r.json()).then(d => {
-            document.getElementById('ruta_pdf').value = d.ruta_pdf;
-            document.getElementById('ruta_csv').value = d.ruta_csv;
-            document.getElementById('timeout_segundos').value = d.timeout_segundos;
-        });
+        checkAuth();
     });
+
+    function checkAuth() {
+        fetch(API_URL + '?action=check_auth')
+            .then(r => r.json())
+            .then(d => {
+                if (d.logged_in) {
+                    showSettings();
+                } else {
+                    showLogin();
+                }
+            })
+            .catch(e => showLogin());
+    }
+
+    function showLogin() {
+        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('settingsSection').style.display = 'none';
+    }
+
+    function showSettings() {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('settingsSection').style.display = 'block';
+        loadConfig();
+    }
+
+    function loadConfig() {
+        fetch(API_URL + '?action=get_config')
+            .then(r => {
+                if (r.status === 401) {
+                    showLogin();
+                    throw new Error('Unauthorized');
+                }
+                return r.json();
+            })
+            .then(d => {
+                document.getElementById('ruta_pdf').value = d.ruta_pdf;
+                document.getElementById('ruta_csv').value = d.ruta_csv;
+                document.getElementById('timeout_segundos').value = d.timeout_segundos;
+            })
+            .catch(e => console.error(e));
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        fd.append('action', 'login');
+
+        fetch(API_URL, {method: 'POST', body: fd})
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    showSettings();
+                    document.getElementById('loginMsg').textContent = '';
+                } else {
+                    document.getElementById('loginMsg').textContent = d.msg;
+                    document.getElementById('loginMsg').className = 'status-msg error';
+                }
+            })
+            .catch(e => {
+                console.error(e);
+                document.getElementById('loginMsg').textContent = "Error de conexión";
+                document.getElementById('loginMsg').className = 'status-msg error';
+            });
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        const fd = new FormData();
+        fd.append('action', 'logout');
+        fetch(API_URL, {method: 'POST', body: fd})
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    showLogin();
+                }
+            });
+    });
+
     function testPath(id, type) {
         const p = document.getElementById(id).value;
         const m = document.getElementById('msg_' + id);
         m.textContent = 'Verificando...'; m.className='status-msg';
         const fd = new FormData(); fd.append('action','test_path'); fd.append('path',p); fd.append('type',type);
-        fetch(API_URL, {method:'POST', body:fd}).then(r=>r.json()).then(d=>{
-            m.textContent = d.msg; m.className = 'status-msg ' + (d.success?'success':'error');
-        });
+        fetch(API_URL, {method:'POST', body:fd})
+            .then(r => {
+                if(r.status === 401) { showLogin(); throw new Error('Unauthorized'); }
+                return r.json();
+            })
+            .then(d => {
+                m.textContent = d.msg; m.className = 'status-msg ' + (d.success?'success':'error');
+            });
     }
+
     document.getElementById('configForm').addEventListener('submit', e => {
         e.preventDefault();
-        fetch(API_URL, {method:'POST', body:new FormData(e.target)}).then(r=>r.json()).then(d=>{alert(d.msg); if(d.success) location.reload();});
+        fetch(API_URL, {method:'POST', body:new FormData(e.target)})
+            .then(r => {
+                if(r.status === 401) { showLogin(); throw new Error('Unauthorized'); }
+                return r.json();
+            })
+            .then(d => {
+                alert(d.msg);
+                // if(d.success) location.reload(); // Reload might be annoying if it resets auth check visually
+            });
     });
+
     document.getElementById('uploadForm').addEventListener('submit', e => {
         e.preventDefault();
         const fd = new FormData(e.target); fd.append('action','upload_csv');
         document.getElementById('upload_status').textContent = "Subiendo...";
-        fetch(API_URL, {method:'POST', body:fd}).then(r=>r.json()).then(d=>{
-            const s = document.getElementById('upload_status');
-            s.textContent = d.msg; s.className = 'status-msg ' + (d.success?'success':'error');
-        });
+        fetch(API_URL, {method:'POST', body:fd})
+            .then(r => {
+                if(r.status === 401) { showLogin(); throw new Error('Unauthorized'); }
+                return r.json();
+            })
+            .then(d => {
+                const s = document.getElementById('upload_status');
+                s.textContent = d.msg; s.className = 'status-msg ' + (d.success?'success':'error');
+            });
     });
 </script>
 </body>
