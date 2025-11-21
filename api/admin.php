@@ -8,12 +8,10 @@ $validPassword = 'queija1234';
 
 $action = $_REQUEST['action'] ?? '';
 
-// Helper to check auth
 function isAuthenticated() {
     return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 }
 
-// Handle Login
 if ($action === 'login') {
     $pass = $_POST['password'] ?? '';
     if ($pass === $validPassword) {
@@ -25,20 +23,17 @@ if ($action === 'login') {
     exit;
 }
 
-// Handle Logout
 if ($action === 'logout') {
     session_destroy();
     echo json_encode(["success" => true, "msg" => "Sesión cerrada"]);
     exit;
 }
 
-// Check Auth Status
 if ($action === 'check_auth') {
     echo json_encode(["success" => true, "logged_in" => isAuthenticated()]);
     exit;
 }
 
-// Protect sensitive actions
 if (!isAuthenticated()) {
     http_response_code(401);
     echo json_encode(["success" => false, "msg" => "No autorizado"]);
@@ -115,7 +110,6 @@ if ($action === 'upload_csv') {
         }
         $targetPath = $currentConfig['ruta_csv'] ?? $csvDefaultPath;
         
-        // Fix logic for relative path handling
         if (!file_exists(dirname($targetPath)) && file_exists(__DIR__ . '/' . dirname($targetPath))) {
              $targetPath = __DIR__ . '/' . $targetPath;
         }
@@ -128,6 +122,60 @@ if ($action === 'upload_csv') {
 
     } else {
         echo json_encode(["success" => false, "msg" => "Error en la subida."]);
+    }
+    exit;
+}
+
+$csvDir = __DIR__ . '/../csv/';
+
+if ($action === 'list_csvs') {
+    $files = glob($csvDir . '*.csv');
+    $fileNames = [];
+    if ($files) {
+        foreach($files as $f) {
+            $fileNames[] = basename($f);
+        }
+    }
+    echo json_encode(["success" => true, "files" => $fileNames]);
+    exit;
+}
+
+if ($action === 'get_csv_content') {
+    $filename = $_GET['filename'] ?? '';
+    $filename = basename($filename);
+    $path = $csvDir . $filename;
+
+    if (file_exists($path) && is_readable($path)) {
+        echo json_encode(["success" => true, "content" => file_get_contents($path)]);
+    } else {
+        echo json_encode(["success" => false, "msg" => "Archivo no encontrado o no legible."]);
+    }
+    exit;
+}
+
+if ($action === 'save_csv_content') {
+    $filename = $_POST['filename'] ?? '';
+    $content = $_POST['content'] ?? '';
+
+    $filename = basename($filename);
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+    if ($ext !== 'csv') {
+        echo json_encode(["success" => false, "msg" => "Solo se permiten archivos .CSV"]);
+        exit;
+    }
+
+    $path = $csvDir . $filename;
+
+    if (empty($filename)) {
+        echo json_encode(["success" => false, "msg" => "Nombre de archivo vacío."]);
+        exit;
+    }
+
+    if (file_put_contents($path, $content) !== false) {
+         echo json_encode(["success" => true, "msg" => "Archivo guardado."]);
+    } else {
+         echo json_encode(["success" => false, "msg" => "No se puede escribir el archivo."]);
     }
     exit;
 }

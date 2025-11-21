@@ -95,6 +95,22 @@
             <div id="upload_status" class="status-msg"></div>
         </div>
     </form>
+
+    <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+    <h3>✏️ Editar CSVs</h3>
+    <div class="form-group">
+        <label>Seleccionar Archivo:</label>
+        <select id="csvFileSelect" style="width: 100%; padding: 5px; margin-bottom: 10px;">
+            <option value="">-- Seleccione --</option>
+        </select>
+        <button type="button" class="btn btn-secondary" onclick="loadCsvContent()" style="margin-bottom: 10px;">Cargar</button>
+    </div>
+    <div class="form-group">
+        <label>Contenido:</label>
+        <textarea id="csvContent" rows="10" style="width: 100%; font-family: monospace;"></textarea>
+    </div>
+    <button type="button" class="btn btn-success" onclick="saveCsvContent()">Guardar Cambios</button>
+    <div id="edit_csv_status" class="status-msg"></div>
 </div>
 
 <script>
@@ -126,6 +142,7 @@
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('settingsSection').style.display = 'block';
         loadConfig();
+        loadCsvList();
     }
 
     function loadConfig() {
@@ -204,7 +221,6 @@
             })
             .then(d => {
                 alert(d.msg);
-                // if(d.success) location.reload(); // Reload might be annoying if it resets auth check visually
             });
     });
 
@@ -222,6 +238,63 @@
                 s.textContent = d.msg; s.className = 'status-msg ' + (d.success?'success':'error');
             });
     });
+
+    function loadCsvList() {
+        fetch(API_URL + '?action=list_csvs')
+            .then(r => r.json())
+            .then(d => {
+                if(d.success) {
+                    const sel = document.getElementById('csvFileSelect');
+                    sel.innerHTML = '<option value="">-- Seleccione --</option>';
+                    d.files.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = f;
+                        opt.textContent = f;
+                        sel.appendChild(opt);
+                    });
+                }
+            });
+    }
+
+    function loadCsvContent() {
+        const filename = document.getElementById('csvFileSelect').value;
+        if(!filename) return;
+
+        fetch(API_URL + '?action=get_csv_content&filename=' + encodeURIComponent(filename))
+            .then(r => r.json())
+            .then(d => {
+                if(d.success) {
+                    document.getElementById('csvContent').value = d.content;
+                    document.getElementById('edit_csv_status').textContent = "";
+                } else {
+                    alert(d.msg);
+                }
+            });
+    }
+
+    function saveCsvContent() {
+        const filename = document.getElementById('csvFileSelect').value;
+        const content = document.getElementById('csvContent').value;
+        if(!filename) {
+            alert("Seleccione un archivo");
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('action', 'save_csv_content');
+        fd.append('filename', filename);
+        fd.append('content', content);
+
+        document.getElementById('edit_csv_status').textContent = "Guardando...";
+
+        fetch(API_URL, {method: 'POST', body: fd})
+            .then(r => r.json())
+            .then(d => {
+                const s = document.getElementById('edit_csv_status');
+                s.textContent = d.msg;
+                s.className = 'status-msg ' + (d.success ? 'success' : 'error');
+            });
+    }
 </script>
 </body>
 </html>
