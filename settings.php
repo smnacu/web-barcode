@@ -3,114 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuracion Daruma</title>
+    <title>Configuración - Daruma</title>
     <link rel="stylesheet" href="css/styles.css">
-    <style>
-        /* Login styles */
-        #loginSection {
-            max-width: 400px;
-            margin: 50px auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        #settingsSection {
-            display: none;
-        }
-        .hidden {
-            display: none !important;
-        }
-    </style>
 </head>
-<body style="background: #f3f4f6;">
+<body>
 
 <!-- LOGIN SECTION -->
-<div id="loginSection">
+<div id="loginSection" class="container login-card">
+    <div style="margin-bottom: 20px;">
+        <img src="img/logo.png" alt="Daruma" style="height: 50px;">
+    </div>
     <h2>Acceso Admin</h2>
-    <p>Ingrese contraseña para continuar</p>
+    <p class="subtitle" style="margin-bottom: 20px;">Ingrese contraseña para continuar</p>
     <form id="loginForm">
         <div class="form-group">
-            <input type="password" id="adminPassword" name="password" placeholder="Contraseña" required style="width: 100%; padding: 10px; margin-bottom: 10px;">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar</button>
+            <input type="password" id="adminPassword" name="password" placeholder="Contraseña" required>
         </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Ingresar</button>
         <div id="loginMsg" class="status-msg"></div>
     </form>
     <div style="margin-top: 20px;">
-        <a href="index.html" style="color: var(--primary); text-decoration: none;">&larr; Volver al Scanner</a>
+        <a href="index.html" style="color: var(--primary); text-decoration: none; font-size: 0.9em;">&larr; Volver al Scanner</a>
     </div>
 </div>
 
 <!-- SETTINGS SECTION -->
-<div id="settingsSection" class="settings-container">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <a href="index.html" style="color: var(--primary); text-decoration: none; font-weight: 700;">&larr; Volver</a>
-        <button id="logoutBtn" class="btn btn-secondary" style="padding: 5px 10px;">Cerrar Sesión</button>
-    </div>
-
-    <h1>Panel de Control</h1>
-    <p class="subtitle">Configuracion del sistema</p>
-    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-
-    <form id="configForm">
-        <div class="form-group">
-            <label>📂 Ruta PDF</label>
-            <p style="font-size:0.8em; color:#666">Ej: <code>../Pdf/</code>, <code>D:\Planos\</code> o <code>\\SRV01\Docs\</code></p>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="ruta_pdf" name="ruta_pdf">
-                <button type="button" class="btn btn-primary" onclick="testPath('ruta_pdf', 'dir')">Probar</button>
+<div id="settingsSection" class="container settings-container" style="display: none;">
+    <header>
+        <div class="logo-container">
+            <img src="img/logo.png" alt="Daruma" class="logo-img">
+            <div class="header-text">
+                <h1>Panel de Control</h1>
+                <p class="subtitle">Configuración del sistema</p>
             </div>
-            <div id="msg_ruta_pdf" class="status-msg"></div>
         </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="index.html" class="btn btn-secondary" style="font-size: 0.9em;">Volver</a>
+            <button id="logoutBtn" class="btn btn-danger" style="font-size: 0.9em;">Salir</button>
+        </div>
+    </header>
 
-        <div class="form-group">
-            <label>📄 Ruta CSV</label>
-            <p style="font-size:0.8em; color:#666">Ej: <code>../csv/Libro.csv</code></p>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="ruta_csv" name="ruta_csv">
-                <button type="button" class="btn btn-primary" onclick="testPath('ruta_csv', 'file')">Probar</button>
+    <div class="main-content">
+        <form id="configForm">
+            <div class="form-group">
+                <label>📂 Ruta Carpeta PDF</label>
+                <p style="font-size:0.8em; color:var(--text-muted); margin-bottom: 5px;">Ruta local o de red donde se alojan los archivos PDF.</p>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="ruta_pdf" name="ruta_pdf" placeholder="../Pdf/">
+                    <button type="button" class="btn btn-secondary" onclick="testPath('ruta_pdf', 'dir')">Probar</button>
+                </div>
+                <div id="msg_ruta_pdf" class="status-msg"></div>
             </div>
-            <div id="msg_ruta_csv" class="status-msg"></div>
-        </div>
 
-        <div class="form-group">
-            <label>⏱️ Timeout (Segundos)</label>
-            <input type="number" id="timeout_segundos" name="timeout_segundos" min="5">
-        </div>
-
-        <button type="submit" class="btn btn-success" style="width:100%">Guardar</button>
-    </form>
-
-    <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
-    <h3>📥 Cargar Datos</h3>
-    <p style="font-size:0.9em; color:#666;">Formato requerido: <strong>CSV</strong>.</p>
-    
-    <form id="uploadForm">
-        <div class="form-group">
-            <div style="display:flex; gap:10px;">
-                <input type="file" id="archivo_csv" name="archivo_csv" accept=".csv,.txt" style="background:white;">
-                <button type="submit" class="btn btn-primary">Subir</button>
+            <div class="form-group">
+                <label>📄 Ruta Archivo CSV</label>
+                <p style="font-size:0.8em; color:var(--text-muted); margin-bottom: 5px;">Ubicación del archivo de base de datos.</p>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="ruta_csv" name="ruta_csv" placeholder="../csv/Libro.csv">
+                    <button type="button" class="btn btn-secondary" onclick="testPath('ruta_csv', 'file')">Probar</button>
+                </div>
+                <div id="msg_ruta_csv" class="status-msg"></div>
             </div>
-            <div id="upload_status" class="status-msg"></div>
-        </div>
-    </form>
 
-    <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
-    <h3>✏️ Editar CSVs</h3>
-    <div class="form-group">
-        <label>Seleccionar Archivo:</label>
-        <select id="csvFileSelect" style="width: 100%; padding: 5px; margin-bottom: 10px;">
-            <option value="">-- Seleccione --</option>
-        </select>
-        <button type="button" class="btn btn-secondary" onclick="loadCsvContent()" style="margin-bottom: 10px;">Cargar</button>
+            <div class="form-group">
+                <label>⏱️ Timeout (Segundos)</label>
+                <input type="number" id="timeout_segundos" name="timeout_segundos" min="5" placeholder="30">
+            </div>
+            
+            <div class="form-group">
+                <label>🔑 Cambiar Contraseña Admin</label>
+                <input type="password" id="new_admin_password" name="admin_password" placeholder="Dejar vacío para mantener la actual">
+            </div>
+
+            <button type="submit" class="btn btn-success" style="width:100%">Guardar Configuración</button>
+        </form>
+
+        <hr>
+
+        <h3>📥 Actualizar Base de Datos</h3>
+        <p style="font-size:0.9em; color:var(--text-muted);">Subir un nuevo archivo .CSV para reemplazar el actual.</p>
+        
+        <form id="uploadForm">
+            <div class="form-group">
+                <div style="display:flex; gap:10px; align-items: center;">
+                    <input type="file" id="archivo_csv" name="archivo_csv" accept=".csv,.txt" style="background:white; padding: 8px;">
+                    <button type="submit" class="btn btn-primary">Subir</button>
+                </div>
+                <div id="upload_status" class="status-msg"></div>
+            </div>
+        </form>
+
+        <hr>
+
+        <h3>✏️ Editor Rápido CSV</h3>
+        <div class="form-group">
+            <label>Seleccionar Archivo:</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="csvFileSelect" style="flex-grow: 1;">
+                    <option value="">-- Seleccione --</option>
+                </select>
+                <button type="button" class="btn btn-secondary" onclick="loadCsvContent()">Cargar</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <textarea id="csvContent" rows="15" style="width: 100%; font-family: monospace; font-size: 0.9em; white-space: pre; overflow-x: auto;"></textarea>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="saveCsvContent()">Guardar Cambios en CSV</button>
+        <div id="edit_csv_status" class="status-msg"></div>
     </div>
-    <div class="form-group">
-        <label>Contenido:</label>
-        <textarea id="csvContent" rows="10" style="width: 100%; font-family: monospace;"></textarea>
-    </div>
-    <button type="button" class="btn btn-success" onclick="saveCsvContent()">Guardar Cambios</button>
-    <div id="edit_csv_status" class="status-msg"></div>
 </div>
 
 <script>
@@ -136,11 +136,15 @@
     function showLogin() {
         document.getElementById('loginSection').style.display = 'block';
         document.getElementById('settingsSection').style.display = 'none';
+        document.body.style.alignItems = 'center';
+        document.body.style.justifyContent = 'center';
     }
 
     function showSettings() {
         document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('settingsSection').style.display = 'block';
+        document.getElementById('settingsSection').style.display = 'flex';
+        document.body.style.alignItems = 'stretch';
+        document.body.style.justifyContent = 'flex-start';
         loadConfig();
         loadCsvList();
     }
@@ -173,6 +177,7 @@
                 if (d.success) {
                     showSettings();
                     document.getElementById('loginMsg').textContent = '';
+                    e.target.reset();
                 } else {
                     document.getElementById('loginMsg').textContent = d.msg;
                     document.getElementById('loginMsg').className = 'status-msg error';
@@ -214,13 +219,19 @@
 
     document.getElementById('configForm').addEventListener('submit', e => {
         e.preventDefault();
-        fetch(API_URL, {method:'POST', body:new FormData(e.target)})
+        const fd = new FormData(e.target);
+        fd.append('action', 'save_config');
+        
+        fetch(API_URL, {method:'POST', body:fd})
             .then(r => {
                 if(r.status === 401) { showLogin(); throw new Error('Unauthorized'); }
                 return r.json();
             })
             .then(d => {
                 alert(d.msg);
+                if(d.success) {
+                    document.getElementById('new_admin_password').value = ''; // Clear password field
+                }
             });
     });
 
@@ -236,6 +247,7 @@
             .then(d => {
                 const s = document.getElementById('upload_status');
                 s.textContent = d.msg; s.className = 'status-msg ' + (d.success?'success':'error');
+                if(d.success) loadCsvList();
             });
     });
 
@@ -279,6 +291,8 @@
             alert("Seleccione un archivo");
             return;
         }
+
+        if(!confirm("¿Está seguro de guardar los cambios? Esto sobrescribirá el archivo original.")) return;
 
         const fd = new FormData();
         fd.append('action', 'save_csv_content');

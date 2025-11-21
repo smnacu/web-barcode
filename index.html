@@ -11,25 +11,32 @@
     <meta name="theme-color" content="#2563eb" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <link rel="stylesheet" href="css/styles.css" />
+    <!-- Preload fonts or use system fonts -->
     <script src="js/libs/pdf.min.js"></script>
     <script src="js/libs/pdf.worker.min.js"></script>
   </head>
   <body>
     <div id="scanner-view-container" class="container">
       <header>
-        <div>
-          <h1>Scanner Daruma</h1>
-          <p class="subtitle">Sistema de Planta</p>
+        <div class="logo-container">
+            <img src="img/logo.png" alt="Daruma Consulting" class="logo-img">
+            <div class="header-text">
+                <h1>Scanner</h1>
+                <p class="subtitle">Sistema de Planta</p>
+            </div>
         </div>
-        <a href="settings.php" class="btn btn-sm btn-primary">⚙️</a>
+        <a href="settings.php" class="btn-icon" aria-label="Configuración">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </a>
       </header>
+
       <div class="main-content">
         <section>
           <div class="manual-input">
             <input
               type="text"
               id="manualCodeInput"
-              placeholder="Codigo manual"
+              placeholder="Ingresar código manual..."
               autocomplete="off"
             />
             <button id="manualCodeButton" class="btn btn-primary">
@@ -37,46 +44,54 @@
             </button>
           </div>
           <br />
-          <div id="scanner-region" class="scanner-region">
-            <div class="scanner-placeholder">Iniciando camara...</div>
+          
+          <div class="scanner-wrapper">
+              <div id="scanner-region" class="scanner-region"></div>
+              <div class="scanner-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                  <span>Iniciando cámara...</span>
+              </div>
+              <!-- <div class="scan-overlay"></div> -->
           </div>
         </section>
+
         <section class="history-section">
           <div class="history-header">
-            <h3>Historial</h3>
-            <button id="limpiar-historial" class="btn btn-danger btn-sm">
+            <h3>Historial Reciente</h3>
+            <button id="limpiar-historial" class="btn btn-danger btn-sm" style="font-size: 0.8em; padding: 4px 8px;">
               Borrar
             </button>
           </div>
           <div id="historial-container" class="history-list"></div>
         </section>
       </div>
-      <footer><p>Daruma Consulting SRL</p></footer>
+      
+      <footer>
+          <p>&copy; Daruma Consulting SRL</p>
+      </footer>
     </div>
 
+    <!-- Result View Overlay -->
     <section id="result-view-container" class="result-section">
-      <header id="result-header" class="result-header">
-        <div id="ficha-info"></div>
-        <button id="scan-new-button" class="btn btn-success">Volver</button>
+      <header class="result-header">
+        <div id="ficha-info" class="product-info"></div>
+        <button id="scan-new-button" class="btn btn-success">Nueva Búsqueda</button>
       </header>
+      
       <div id="pdf-viewer-container" class="pdf-viewer">
         <div id="pdf-controls" class="pdf-controls">
-          <button id="pdf-prev" class="btn btn-sm btn-primary">&lt;</button>
-          <span
-            ><span id="pdf-page-num"></span> / <span id="pdf-page-count"></span
-          ></span>
-          <button id="pdf-next" class="btn btn-sm btn-primary">&gt;</button>
+          <button id="pdf-prev" title="Anterior">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <span>
+            <span id="pdf-page-num">1</span> / <span id="pdf-page-count">--</span>
+          </span>
+          <button id="pdf-next" title="Siguiente">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
         </div>
-        <div
-          style="
-            overflow: auto;
-            flex-grow: 1;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            background: #525659;
-          "
-        >
+        
+        <div style="overflow: auto; flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: flex-start; padding: 20px;">
           <canvas id="pdf-canvas"></canvas>
         </div>
       </div>

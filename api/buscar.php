@@ -14,50 +14,48 @@ if (file_exists($configFile)) {
 
 function limpiarString($texto) {
     if ($texto === null) return null;
-    $texto = trim($texto);
-    $texto = str_replace(["\xC2\xA0", "\xA0"], '', $texto);
+    // Remove BOM and weird spaces
     $texto = preg_replace('/^\x{FEFF}/u', '', $texto);
-    return $texto;
+    $texto = str_replace(["\xC2\xA0", "\xA0"], ' ', $texto);
+    return trim($texto);
 }
 
 function simpleJsonEncode($data) {
-    if (is_array($data)) {
-        $parts = [];
-        $isList = array_keys($data) === range(0, count($data) - 1);
-        foreach ($data as $key => $value) {
-            $part = $isList ? '' : '"' . addslashes($key) . '":';
-            if (is_array($value)) $part .= simpleJsonEncode($value);
-            elseif (is_bool($value)) $part .= ($value ? 'true' : 'false');
-            elseif (is_numeric($value) && !is_string($value)) $part .= $value;
-            elseif ($value === null) $part .= 'null';
-            else $part .= '"' . addslashes((string)$value) . '"';
-            $parts[] = $part;
-        }
-        return $isList ? '[' . implode(',', $parts) . ']' : '{' . implode(',', $parts) . '}';
-    }
-    return '"' . addslashes((string)$data) . '"';
+    // Simple JSON encoder to avoid issues with some encodings if standard json_encode fails,
+    // though standard json_encode is usually preferred. Keeping this for compatibility 
+    // but improving it slightly.
+    return json_encode($data); 
 }
 
 function buscarEnLibro($codigo, $config) {
     $csv_path = $config['ruta_csv'];
+    // Handle relative paths
     if (!file_exists($csv_path) && file_exists(__DIR__ . '/' . $csv_path)) {
         $csv_path = __DIR__ . '/' . $csv_path;
     }
 
-    if (!file_exists($csv_path)) return ['encontrado' => false];
+    if (!file_exists($csv_path)) return ['encontrado' => false, 'error' => 'Archivo CSV no encontrado'];
 
     $handle = fopen($csv_path, 'r');
-    if (!$handle) return ['encontrado' => false];
+    if (!$handle) return ['encontrado' => false, 'error' => 'No se pudo abrir CSV'];
 
-    fgetcsv($handle);
+    // Detect delimiter (simple check)
+    $line = fgets($handle);
+    rewind($handle);
+    $delimiter = (strpos($line, ';') !== false) ? ';' : ',';
+
+    // Skip header
+    fgetcsv($handle, 0, $delimiter);
     
-    while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+    $codigo = strtolower($codigo);
+
+    while (($data = fgetcsv($handle, 1000, $delimiter)) !== false) {
         if (count($data) >= 3) {
             $codArt = limpiarString($data[0]);
             $descripcion = limpiarString($data[1]);
             $ean = limpiarString($data[2]);
 
-            if ($codArt === $codigo || $ean === $codigo) {
+            if (strtolower($codArt) === $codigo || strtolower($ean) === $codigo) {
                 fclose($handle);
                 return [
                     'encontrado' => true,
@@ -79,25 +77,36 @@ function buscarPDF($producto, $config) {
     $pdf_dir = rtrim($pdf_dir, '/\\') . DIRECTORY_SEPARATOR;
 
     if (!is_dir($pdf_dir)) return null;
-    $pdfs = glob($pdf_dir . '*.{pdf,PDF}', GLOB_BRACE);
     
+    // Normalize search terms
     $busquedas = [];
     if (!empty($producto['ean'])) $busquedas[] = preg_replace('/[^a-z0-9]/', '', strtolower($producto['ean']));
     if (!empty($producto['codigo'])) $busquedas[] = preg_replace('/[^a-z0-9]/', '', strtolower($producto['codigo']));
     
+    // Get all PDFs
+    $pdfs = glob($pdf_dir . '*.{pdf,PDF}', GLOB_BRACE);
+    if (!$pdfs) return null;
+
     foreach ($pdfs as $pdfPath) {
-        $nombreNorm = preg_replace('/[^a-z0-9]/', '', strtolower(pathinfo($pdfPath, PATHINFO_FILENAME)));
+        $filename = pathinfo($pdfPath, PATHINFO_FILENAME);
+        $nombreNorm = preg_replace('/[^a-z0-9]/', '', strtolower($filename));
+        
         foreach($busquedas as $b) {
-             if (strpos($nombreNorm, $b) !== false) return basename($pdfPath);
+             // Check if the search term is contained in the filename
+             // This is a loose match. For exact match, use ===
+             if (strpos($nombreNorm, $b) !== false) {
+                 return basename($pdfPath);
+             }
         }
     }
     return null;
 }
 
 $codigo = limpiarString($_REQUEST['codigo'] ?? '');
+
 if (empty($codigo)) {
     http_response_code(400);
-    echo simpleJsonEncode(['error' => true, 'mensaje' => 'Codigo requerido']);
+    echo json_encode(['error' => true, 'mensaje' => 'Codigo requerido']);
     exit;
 }
 
@@ -105,7 +114,7 @@ $res = buscarEnLibro($codigo, $config);
 
 if ($res['encontrado']) {
     $pdf = buscarPDF($res['producto'], $config);
-    echo simpleJsonEncode([
+    echo json_encode([
         'error' => false,
         'encontrado' => true,
         'producto' => $res['producto'],
@@ -113,7 +122,7 @@ if ($res['encontrado']) {
         'fuente' => $res['fuente']
     ]);
 } else {
-    echo simpleJsonEncode([
+    echo json_encode([
         'error' => false,
         'encontrado' => false,
         'mensaje' => 'Producto no encontrado',

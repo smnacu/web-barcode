@@ -4,17 +4,38 @@ header('Content-Type: application/json; charset=utf-8');
 
 $configFile = __DIR__ . '/config.json';
 $csvDefaultPath = __DIR__ . '/../csv/Libro.csv';
-$validPassword = 'queija1234';
 
+// Helper to load config
+function getConfig() {
+    global $configFile;
+    $defaultConfig = [
+        "ruta_csv" => "../csv/Libro.csv",
+        "ruta_pdf" => "../Pdf/",
+        "timeout_segundos" => 30,
+        "admin_password" => "queija1234"
+    ];
+    
+    if (file_exists($configFile)) {
+        $loaded = json_decode(file_get_contents($configFile), true);
+        if ($loaded) {
+            return array_merge($defaultConfig, $loaded);
+        }
+    }
+    return $defaultConfig;
+}
+
+$config = getConfig();
 $action = $_REQUEST['action'] ?? '';
 
 function isAuthenticated() {
     return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 }
 
+// --- Public Actions ---
+
 if ($action === 'login') {
     $pass = $_POST['password'] ?? '';
-    if ($pass === $validPassword) {
+    if ($pass === $config['admin_password']) {
         $_SESSION['logged_in'] = true;
         echo json_encode(["success" => true, "msg" => "Login exitoso"]);
     } else {
@@ -34,6 +55,8 @@ if ($action === 'check_auth') {
     exit;
 }
 
+// --- Protected Actions ---
+
 if (!isAuthenticated()) {
     http_response_code(401);
     echo json_encode(["success" => false, "msg" => "No autorizado"]);
@@ -41,26 +64,21 @@ if (!isAuthenticated()) {
 }
 
 if ($action === 'get_config') {
-    if (file_exists($configFile)) {
-        echo file_get_contents($configFile);
-    } else {
-        echo json_encode([
-            "ruta_csv" => "../csv/Libro.csv",
-            "ruta_pdf" => "../Pdf/",
-            "timeout_segundos" => 30
-        ]);
-    }
+    echo json_encode($config);
     exit;
 }
 
 if ($action === 'save_config') {
-    $data = [
-        "ruta_csv" => $_POST['ruta_csv'] ?? '../csv/Libro.csv',
-        "ruta_pdf" => $_POST['ruta_pdf'] ?? '../Pdf/',
-        "timeout_segundos" => intval($_POST['timeout_segundos'] ?? 30)
-    ];
+    $newConfig = $config;
+    $newConfig['ruta_csv'] = $_POST['ruta_csv'] ?? $config['ruta_csv'];
+    $newConfig['ruta_pdf'] = $_POST['ruta_pdf'] ?? $config['ruta_pdf'];
+    $newConfig['timeout_segundos'] = intval($_POST['timeout_segundos'] ?? $config['timeout_segundos']);
     
-    if (file_put_contents($configFile, json_encode($data, JSON_PRETTY_PRINT))) {
+    if (!empty($_POST['admin_password'])) {
+        $newConfig['admin_password'] = $_POST['admin_password'];
+    }
+    
+    if (file_put_contents($configFile, json_encode($newConfig, JSON_PRETTY_PRINT))) {
         echo json_encode(["success" => true, "msg" => "Configuracion guardada."]);
     } else {
         echo json_encode(["success" => false, "msg" => "Error de escritura en config.json."]);
@@ -73,6 +91,7 @@ if ($action === 'test_path') {
     $type = $_POST['type'] ?? 'dir';
     
     $testPath = $path;
+    // Check relative to script if not absolute
     if (!file_exists($testPath) && file_exists(__DIR__ . '/' . $testPath)) {
         $testPath = __DIR__ . '/' . $testPath;
     }
@@ -80,12 +99,12 @@ if ($action === 'test_path') {
     if (file_exists($testPath)) {
         if ($type === 'dir' && is_dir($testPath)) {
              $files = glob(rtrim($testPath, '/\\') . '/*.{pdf,PDF}', GLOB_BRACE);
-             $count = count($files);
-             echo json_encode(["success" => true, "msg" => "OK. Accesible. Archivos: $count"]);
+             $count = is_array($files) ? count($files) : 0;
+             echo json_encode(["success" => true, "msg" => "OK. Accesible. Archivos PDF encontrados: $count"]);
         } elseif ($type === 'file' && is_file($testPath)) {
              echo json_encode(["success" => true, "msg" => "OK. Archivo encontrado."]);
         } else {
-             echo json_encode(["success" => false, "msg" => "Ruta existe pero tipo incorrecto."]);
+             echo json_encode(["success" => false, "msg" => "Ruta existe pero no es un " . ($type==='dir'?'directorio':'archivo')]);
         }
     } else {
         echo json_encode(["success" => false, "msg" => "Ruta no encontrada o sin acceso."]);
@@ -104,24 +123,21 @@ if ($action === 'upload_csv') {
             exit;
         }
 
-        $currentConfig = [];
-        if (file_exists($configFile)) {
-             $currentConfig = json_decode(file_get_contents($configFile), true);
-        }
-        $targetPath = $currentConfig['ruta_csv'] ?? $csvDefaultPath;
+        $targetPath = $config['ruta_csv'];
         
+        // Handle relative paths
         if (!file_exists(dirname($targetPath)) && file_exists(__DIR__ . '/' . dirname($targetPath))) {
              $targetPath = __DIR__ . '/' . $targetPath;
         }
 
         if (move_uploaded_file($tmpName, $targetPath)) {
-            echo json_encode(["success" => true, "msg" => "Base de datos actualizada."]);
+            echo json_encode(["success" => true, "msg" => "Base de datos actualizada exitosamente."]);
         } else {
-            echo json_encode(["success" => false, "msg" => "Error al mover el archivo."]);
+            echo json_encode(["success" => false, "msg" => "Error al mover el archivo al destino: $targetPath"]);
         }
 
     } else {
-        echo json_encode(["success" => false, "msg" => "Error en la subida."]);
+        echo json_encode(["success" => false, "msg" => "Error en la subida del archivo."]);
     }
     exit;
 }
@@ -142,7 +158,7 @@ if ($action === 'list_csvs') {
 
 if ($action === 'get_csv_content') {
     $filename = $_GET['filename'] ?? '';
-    $filename = basename($filename);
+    $filename = basename($filename); // Security: prevent directory traversal
     $path = $csvDir . $filename;
 
     if (file_exists($path) && is_readable($path)) {
@@ -173,7 +189,7 @@ if ($action === 'save_csv_content') {
     }
 
     if (file_put_contents($path, $content) !== false) {
-         echo json_encode(["success" => true, "msg" => "Archivo guardado."]);
+         echo json_encode(["success" => true, "msg" => "Archivo guardado correctamente."]);
     } else {
          echo json_encode(["success" => false, "msg" => "No se puede escribir el archivo."]);
     }
