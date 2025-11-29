@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Estilos específicos para Admin */
+        .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .toolbar { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .data-table th { background-color: #333; color: white; }
+        .data-table tr:nth-child(even) { background-color: #f9f9f9; }
+        .editable { background: #fffde7; cursor: pointer; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; }
+        .input-group { margin-bottom: 10px; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .input-group input, .input-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <header class="app-header" style="background: #2c3e50;">
+        <h1 style="color:white; margin:0; font-size: 1.2rem;">Administración de Sistema</h1>
+        <a href="index.html" class="btn btn-secondary btn-sm">Volver al Scanner</a>
+    </header>
+
+    <div class="admin-container">
+        
+        <!-- Configuración -->
+        <section class="toolbar">
+            <div class="input-group" style="flex: 1;">
+                <label>Ruta PDFs (Intranet/Server)</label>
+                <input type="text" id="config-pdf-path" placeholder="../Pdf/">
+            </div>
+            <div class="input-group" style="flex: 1;">
+                <label>CSV Activo</label>
+                <select id="config-csv-file"></select>
+            </div>
+            <div style="flex: 0 0 100%; text-align: right;">
+                <button onclick="saveConfiguration()" class="btn btn-primary">Guardar Configuración</button>
+            </div>
+        </section>
+
+        <!-- Gestión CSV -->
+        <section class="toolbar">
+            <h3>Gestión de Datos</h3>
+            <div style="width: 100%; margin-bottom: 10px;">
+                <input type="file" id="csv-upload" accept=".csv">
+                <button onclick="uploadCSV()" class="btn btn-secondary">Subir Nuevo CSV</button>
+            </div>
+            <button onclick="addRow()" class="btn btn-primary">+ Agregar Fila</button>
+            <button onclick="loadData()" class="btn btn-secondary">Recargar Tabla</button>
+        </section>
+
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="csv-table">
+                <thead>
+                    <!-- Headers dinámicos -->
+                </thead>
+                <tbody>
+                    <!-- Data dinámica -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API = 'api/admin.php';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            loadData();
+        });
+
+        function loadConfig() {
+            const formData = new FormData();
+            formData.append('action', 'get_config');
+            fetch(API, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('config-pdf-path').value = data.config.pdf_path;
+                    const sel = document.getElementById('config-csv-file');
+                    sel.innerHTML = '';
+                    Object.values(data.csv_files).forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = f;
+                        opt.innerText = f;
+                        if(f === data.config.active_csv) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                });
+        }
+
+        function saveConfiguration() {
+            const formData = new FormData();
+            formData.append('action', 'save_config');
+            formData.append('pdf_path', document.getElementById('config-pdf-path').value);
+            formData.append('active_csv', document.getElementById('config-csv-file').value);
+            
+            fetch(API, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(d => {
+                    if(d.status === 'ok') {
+                        alert('Configuración guardada. Recargando datos...');
+                        loadData();
+                    }
+                });
+        }
+
+        function loadData() {
+            const formData = new FormData();
+            formData.append('action', 'get_data');
+            
+            fetch(API, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(res => {
+                    renderTable(res.data);
+                });
+        }
+
+        function renderTable(rows) {
+            const table = document.getElementById('csv-table');
+            table.innerHTML = '';
+            
+            if(!rows || rows.length === 0) return;
+
+            // Headers (usamos la primera fila o genéricos si no tiene headers)
+            // Asumimos primera fila son datos reales para simplificar edición, 
+            // pero lo ideal es que la fila 0 sean headers.
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+            rows[0].forEach((_, i) => {
+                const th = document.createElement('th');
+                th.innerText = i === 0 ? 'CÓDIGO (Key)' : `Columna ${i}`;
+                trHead.appendChild(th);
+            });
+            const thAction = document.createElement('th');
+            thAction.innerText = 'Acciones';
+            trHead.appendChild(thAction);
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+
+            // Body
+            const tbody = document.createElement('tbody');
+            rows.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                row.forEach((cell, cellIndex) => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    td.contentEditable = true; // Edición rápida
+                    td.onblur = () => saveCell(rowIndex, cellIndex, td.innerText, row);
+                    tr.appendChild(td);
+                });
+                
+                const tdAct = document.createElement('td');
+                const btnDel = document.createElement('button');
+                btnDel.innerText = 'X';
+                btnDel.className = 'btn btn-secondary btn-sm';
+                btnDel.style.backgroundColor = '#e74c3c';
+                btnDel.onclick = () => deleteRow(rowIndex);
+                tdAct.appendChild(btnDel);
+                tr.appendChild(tdAct);
+                
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+        }
+
+        function saveCell(rowIndex, colIndex, value, originalRow) {
+            originalRow[colIndex] = value;
+            updateRow(rowIndex, originalRow);
+        }
+
+        function updateRow(index, data) {
+            const fd = new FormData();
+            fd.append('action', 'update_row');
+            fd.append('index', index);
+            data.forEach((val, i) => fd.append(`row_data[${i}]`, val));
+            
+            fetch(API, { method: 'POST', body: fd });
+            // No recargamos para no perder foco, confiamos en la UI
+        }
+
+        function addRow() {
+            // Crear fila vacía basada en el ancho actual
+            const cols = document.getElementById('csv-table').rows[0].cells.length - 1;
+            const emptyRow = new Array(cols).fill("");
+            
+            const fd = new FormData();
+            fd.append('action', 'add_row');
+            emptyRow.forEach((val, i) => fd.append(`row_data[${i}]`, val));
+            
+            fetch(API, { method: 'POST', body: fd })
+                .then(() => loadData());
+        }
+
+        function deleteRow(index) {
+            if(!confirm('¿Borrar esta fila?')) return;
+            const fd = new FormData();
+            fd.append('action', 'delete_row');
+            fd.append('index', index);
+            fetch(API, { method: 'POST', body: fd })
+                .then(() => loadData());
+        }
+
+        function uploadCSV() {
+            const fileInput = document.getElementById('csv-upload');
+            if(fileInput.files.length === 0) return;
+            
+            const fd = new FormData();
+            fd.append('action', 'upload_csv');
+            fd.append('file', fileInput.files[0]);
+            
+            fetch(API, { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(d => {
+                    if(d.status === 'ok') {
+                        alert('Archivo subido');
+                        loadConfig(); // Recargar lista
+                    }
+                });
+        }
+    </script>
+</body>
+</html>

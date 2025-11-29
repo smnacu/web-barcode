@@ -1,110 +1,66 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <title>Scanner Daruma</title>
-    <link rel="manifest" href="manifest.json" />
-    <meta name="theme-color" content="#2563eb" />
-    <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css" />
-    <!-- Preload fonts or use system fonts -->
-    <script src="js/libs/pdf.min.js"></script>
-    <script src="js/libs/pdf.worker.min.js"></script>
-  </head>
-  <body>
-    <div id="scanner-view-container" class="container">
-      <header>
-        <div class="logo-container">
-            <img src="img/logo.png" alt="Daruma Consulting" class="logo-img">
-            <div class="header-text">
-                <h1>Scanner</h1>
-                <p class="subtitle">Sistema de Planta</p>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scanner Producción</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Font Awesome para iconos simples -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <img src="img/logo_bw.png" alt="Logo" class="logo">
+        <div id="status-bar" class="status-info">Iniciando sistema...</div>
+        <a href="admin.html" class="settings-link"><i class="fa fa-cog"></i></a>
+    </header>
+
+    <!-- Scanner Area -->
+    <main id="scanner-container" class="scanner-view">
+        <div id="reader"></div>
+        <p class="instruction">Apunte al código QR o de Barras</p>
+    </main>
+
+    <!-- Result Area (Hidden by default) -->
+    <main id="result-panel" class="result-view hidden">
+        <div class="card">
+            <div id="info-content"></div>
+            
+            <div class="actions">
+                <button id="btn-open-pdf" class="btn btn-primary btn-lg">
+                    <i class="fa fa-file-pdf"></i> Ver Plano/PDF
+                </button>
+                <button id="btn-reset" class="btn btn-secondary btn-lg">
+                    <i class="fa fa-redo"></i> Siguiente
+                </button>
             </div>
+            
+            <div id="pdf-container"></div>
         </div>
-        <a href="settings.php" class="btn-icon" aria-label="Configuración">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        </a>
-      </header>
+    </main>
 
-      <div class="main-content">
-        <section>
-          <div class="manual-input">
-            <input
-              type="text"
-              id="manualCodeInput"
-              placeholder="Ingresar código manual..."
-              autocomplete="off"
-            />
-            <button id="manualCodeButton" class="btn btn-primary">
-              Buscar
-            </button>
-          </div>
-          <br />
-          
-          <div class="scanner-wrapper">
-              <div id="scanner-region" class="scanner-region"></div>
-              <div class="scanner-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                  <span>Iniciando cámara...</span>
-              </div>
-              <!-- <div class="scan-overlay"></div> -->
-          </div>
-        </section>
-
-        <section class="history-section">
-          <div class="history-header">
-            <h3>Historial Reciente</h3>
-            <button id="limpiar-historial" class="btn btn-danger btn-sm" style="font-size: 0.8em; padding: 4px 8px;">
-              Borrar
-            </button>
-          </div>
-          <div id="historial-container" class="history-list"></div>
-        </section>
-      </div>
-      
-      <footer>
-          <p>&copy; Daruma Consulting SRL</p>
-      </footer>
+    <!-- PDF Modal Overlay -->
+    <div id="pdf-modal" class="modal hidden">
+        <div class="modal-header">
+            <span>Visualizador de Documentos</span>
+            <button id="btn-close-pdf" class="btn-close"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <iframe id="pdf-iframe" src="about:blank"></iframe>
+        </div>
     </div>
 
-    <!-- Result View Overlay -->
-    <section id="result-view-container" class="result-section">
-      <header class="result-header">
-        <div id="ficha-info" class="product-info"></div>
-        <button id="scan-new-button" class="btn btn-success">Nueva Búsqueda</button>
-      </header>
-      
-      <div id="pdf-viewer-container" class="pdf-viewer">
-        <div id="pdf-controls" class="pdf-controls">
-          <button id="pdf-prev" title="Anterior">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-          </button>
-          <span>
-            <span id="pdf-page-num">1</span> / <span id="pdf-page-count">--</span>
-          </span>
-          <button id="pdf-next" title="Siguiente">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
-        </div>
-        
-        <div style="overflow: auto; flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: flex-start; padding: 20px;">
-          <canvas id="pdf-canvas"></canvas>
-        </div>
-      </div>
-    </section>
-
+    <!-- Scripts -->
     <script src="js/libs/html5-qrcode.min.js"></script>
-    <script src="js/scanner.js"></script>
+    <script src="js/app.js"></script>
     <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () =>
-          navigator.serviceWorker.register("js/sw.js")
-        );
-      }
+        // Service Worker básico
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('js/sw.js');
+        }
     </script>
-  </body>
+</body>
 </html>
