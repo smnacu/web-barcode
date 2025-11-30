@@ -3,38 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner Producción</title>
+    <title>ITDelivery Scanner</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Font Awesome para iconos simples -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
 
     <!-- Header -->
     <header class="app-header">
-        <img src="img/logo_bw.png" alt="Logo" class="logo">
-        <div id="status-bar" class="status-info">Iniciando sistema...</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="img/logo_bw.png" alt="Logo" class="logo">
+            <div id="status-bar" class="status-info">Sistema Online</div>
+        </div>
         <a href="admin.html" class="settings-link"><i class="fa fa-cog"></i></a>
     </header>
+
+    <!-- Search Manual Area -->
+    <div class="search-container">
+        <div class="input-wrapper">
+            <i class="fa fa-search search-icon"></i>
+            <input type="text" id="manual-search-input" placeholder="Buscar por Código, Nombre o Art...">
+            <button id="btn-manual-search" class="btn btn-primary btn-sm">BUSCAR</button>
+        </div>
+    </div>
 
     <!-- Scanner Area -->
     <main id="scanner-container" class="scanner-view">
         <div id="reader"></div>
-        <p class="instruction">Apunte al código QR o de Barras</p>
+        <p class="instruction">Apunte cámara o use el buscador manual</p>
     </main>
 
-    <!-- Result Area (Hidden by default) -->
+    <!-- Result Area (Oculto por defecto) -->
     <main id="result-panel" class="result-view hidden">
         <div class="card">
             <div id="info-content"></div>
             
             <div class="actions">
                 <button id="btn-open-pdf" class="btn btn-primary btn-lg">
-                    <i class="fa fa-file-pdf"></i> Ver Plano/PDF
+                    <i class="fa fa-file-pdf"></i> Ver Documento
                 </button>
                 <button id="btn-reset" class="btn btn-secondary btn-lg">
-                    <i class="fa fa-redo"></i> Siguiente
+                    <i class="fa fa-redo"></i> Nueva Búsqueda
                 </button>
             </div>
             
@@ -42,10 +52,20 @@
         </div>
     </main>
 
+    <!-- Historial -->
+    <section id="history-section" class="history-panel">
+        <h3><i class="fa fa-history"></i> Historial Reciente</h3>
+        <div id="history-list" class="history-list">
+            <!-- Se llena con JS -->
+            <p class="text-muted">No hay búsquedas recientes.</p>
+        </div>
+        <button onclick="clearHistory()" class="btn-text-only">Borrar Historial</button>
+    </section>
+
     <!-- PDF Modal Overlay -->
     <div id="pdf-modal" class="modal hidden">
         <div class="modal-header">
-            <span>Visualizador de Documentos</span>
+            <span>Visualizador Daruma</span>
             <button id="btn-close-pdf" class="btn-close"><i class="fa fa-times"></i></button>
         </div>
         <div class="modal-body">
@@ -57,7 +77,6 @@
     <script src="js/libs/html5-qrcode.min.js"></script>
     <script src="js/app.js"></script>
     <script>
-        // Service Worker básico
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('js/sw.js');
         }
