@@ -1,125 +1,152 @@
 /**
- * Lógica Scanner - Optimización para Producción
+ * Lógica Core - Scanner, Buscador Manual e Historial
  * Daruma Consulting SRL
  */
 
 const CONFIG = {
     fps: 10,
     qrbox: 250,
-    aspectRatio: 1.0
+    aspectRatio: 1.0,
+    historyLimit: 5 // Cuántos items guardamos en historial
 };
 
 let html5QrcodeScanner = null;
 let isScanning = false;
 
-// Evento principal: intenta arrancar apenas carga la página
 document.addEventListener('DOMContentLoaded', () => {
     initScanner();
     setupEvents();
+    renderHistory(); // Cargar historial al iniciar
 });
 
 function initScanner() {
-    // Si ya existe instancia, limpiamos
     if(html5QrcodeScanner) {
-        try { html5QrcodeScanner.clear(); } catch(e) { console.warn(e); }
+        try { html5QrcodeScanner.clear(); } catch(e) {}
     }
 
-    // Configuración del Scanner
     html5QrcodeScanner = new Html5QrcodeScanner(
         "reader", 
         { 
             fps: CONFIG.fps, 
             qrbox: CONFIG.qrbox,
             aspectRatio: CONFIG.aspectRatio,
-            rememberLastUsedCamera: true, // CLAVE: Recuerda la cámara elegida
+            rememberLastUsedCamera: true,
             supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
         },
-        /* verbose= */ false
+        false
     );
 
-    // Renderiza el scanner. 
-    // NOTA: La primera vez requiere click del usuario por seguridad del navegador.
-    // Las siguientes veces, si 'rememberLastUsedCamera' funciona en el dispositivo,
-    // debería entrar derecho.
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-    
+    html5QrcodeScanner.render(onScanSuccess, (err) => { /* ignorar fallos de frame */ });
     isScanning = true;
-    updateStatus("Cámara lista. Apunte al código.", "info");
 }
 
-function onScanSuccess(decodedText, decodedResult) {
-    if (!isScanning) return;
+// --- CORE SEARCH LOGIC ---
 
-    // DETENER scanner para liberar RAM inmediatamente
-    console.log(`Detectado: ${decodedText}`);
-    html5QrcodeScanner.pause(true); 
-    isScanning = false;
+function performSearch(query) {
+    if (!query || query.trim().length < 2) {
+        updateStatus("Ingrese al menos 2 caracteres", "error");
+        return;
+    }
 
-    updateStatus("Procesando...", "warning");
-    
-    // Llamada a la API
-    fetch(`api/scan.php?code=${encodeURIComponent(decodedText)}`)
+    // Pausar scanner si estaba activo para ahorrar recursos
+    if (isScanning && html5QrcodeScanner) {
+        html5QrcodeScanner.pause(true);
+        isScanning = false;
+    }
+
+    updateStatus("Buscando...", "warning");
+
+    fetch(`api/scan.php?code=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
             if (data.found) {
                 showResult(data);
+                addToHistory(data); // <--- GUARDAR EN HISTORIAL
             } else {
-                updateStatus(`Código ${decodedText} NO encontrado`, "error");
-                // Breve pausa y retomamos escaneo
-                setTimeout(resumeScanner, 2500); 
+                updateStatus("No encontrado: " + query, "error");
+                // Si fue manual, no reiniciamos scanner auto, dejamos que el user decida.
+                // Si fue por scan, reiniciamos.
             }
         })
         .catch(err => {
             console.error(err);
-            updateStatus("Error de conexión con API", "error");
-            setTimeout(resumeScanner, 3000);
+            updateStatus("Error de conexión", "error");
         });
 }
 
-function onScanFailure(error) {
-    // Ruido de log, ignorar para performance
+function onScanSuccess(decodedText, decodedResult) {
+    if (!isScanning) return;
+    performSearch(decodedText);
 }
+
+// --- UI HANDLING ---
 
 function showResult(data) {
     const resultDiv = document.getElementById('result-panel');
     const scannerDiv = document.getElementById('scanner-container');
+    const searchDiv = document.querySelector('.search-container');
     
-    // Swap de pantallas
+    // Ocultar búsqueda y scanner
     scannerDiv.classList.add('hidden');
+    searchDiv.classList.add('hidden');
     resultDiv.classList.remove('hidden');
 
-    // Llenar datos
+    // Render Datos
     const infoContainer = document.getElementById('info-content');
-    let html = `<h3>Código: ${data.code}</h3><ul class="data-list">`;
+    // Usamos la columna 1 como Título principal (ej: Descripción), o la 0 si no hay más
+    const mainTitle = data.data[1] ? data.data[1] : data.data[0];
+    const subTitle = data.data[0]; // Código
+
+    let html = `
+        <h2 class="result-title">${mainTitle}</h2>
+        <div class="result-code">REF: ${subTitle}</div>
+        <ul class="data-list">
+    `;
     
-    // Renderizamos las columnas del CSV
     data.data.forEach((val, index) => {
-        // Ignoramos la col 0 (código) y las vacías
-        if(index > 0 && val.trim() !== "") { 
-            html += `<li><strong>Dato ${index}:</strong> ${val}</li>`;
+        if(index > 1 && val.trim() !== "") { 
+            html += `<li><strong>Col ${index}:</strong> ${val}</li>`;
         }
     });
     html += `</ul>`;
     infoContainer.innerHTML = html;
 
-    // Botón de PDF
+    // Botón PDF
     const btnPdf = document.getElementById('btn-open-pdf');
     const pdfContainer = document.getElementById('pdf-container');
     
     if (data.pdf_available) {
-        btnPdf.style.display = 'inline-flex'; // Flex para el icono
+        btnPdf.style.display = 'inline-flex';
         btnPdf.onclick = () => openPdfViewer(data.pdf_url);
+        // Guardamos URL en el elemento para reuso fácil
+        btnPdf.dataset.url = data.pdf_url;
     } else {
         btnPdf.style.display = 'none';
-        pdfContainer.innerHTML = '<p class="no-pdf">Sin documento asociado</p>';
+        pdfContainer.innerHTML = '<p class="no-pdf"><i class="fa fa-exclamation-triangle"></i> Sin PDF asociado</p>';
+    }
+    
+    updateStatus("Datos cargados correctamente", "success");
+}
+
+function resetApp() {
+    closePdfViewer();
+    document.getElementById('result-panel').classList.add('hidden');
+    document.querySelector('.search-container').classList.remove('hidden');
+    document.getElementById('scanner-container').classList.remove('hidden');
+    document.getElementById('manual-search-input').value = '';
+    
+    if(html5QrcodeScanner) {
+        html5QrcodeScanner.resume();
+        isScanning = true;
+        updateStatus("Listo para buscar", "info");
     }
 }
+
+// --- PDF VIEWER ---
 
 function openPdfViewer(url) {
     const viewer = document.getElementById('pdf-modal');
     const iframe = document.getElementById('pdf-iframe');
-    
-    // Cache bust para evitar versiones viejas
     iframe.src = `${url}?t=${new Date().getTime()}`;
     viewer.classList.remove('hidden');
 }
@@ -127,40 +154,104 @@ function openPdfViewer(url) {
 function closePdfViewer() {
     const viewer = document.getElementById('pdf-modal');
     const iframe = document.getElementById('pdf-iframe');
-    
-    iframe.src = "about:blank"; // Liberar memoria CRÍTICO
+    iframe.src = "about:blank";
     viewer.classList.add('hidden');
 }
 
-function resetApp() {
-    closePdfViewer();
-    document.getElementById('result-panel').classList.add('hidden');
-    document.getElementById('scanner-container').classList.remove('hidden');
+// --- HISTORIAL (LOCAL STORAGE) ---
+
+function addToHistory(data) {
+    let history = JSON.parse(localStorage.getItem('scan_history') || '[]');
     
-    resumeScanner();
+    // Objeto a guardar (simplificado)
+    const item = {
+        code: data.code,
+        title: data.data[1] || data.data[0], // Descripción o Código
+        pdf_url: data.pdf_url,
+        timestamp: new Date().getTime()
+    };
+
+    // Evitar duplicados recientes (borrar si existe para ponerlo primero)
+    history = history.filter(h => h.code !== item.code);
+    
+    // Agregar al principio
+    history.unshift(item);
+    
+    // Limitar cantidad
+    if (history.length > CONFIG.historyLimit) history.pop();
+    
+    localStorage.setItem('scan_history', JSON.stringify(history));
+    renderHistory();
 }
 
-function resumeScanner() {
-    if(html5QrcodeScanner) {
-        // Resume el scanner pausado
-        html5QrcodeScanner.resume();
-        isScanning = true;
-        updateStatus("Listo para escanear", "info");
+function renderHistory() {
+    const container = document.getElementById('history-list');
+    const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
+    
+    if (history.length === 0) {
+        container.innerHTML = '<p class="text-muted">Sin historial reciente.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    history.forEach(h => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        // Si tiene PDF, habilitamos click
+        if (h.pdf_url) {
+            div.onclick = () => openPdfViewer(h.pdf_url);
+            div.innerHTML = `
+                <div class="h-info">
+                    <span class="h-title">${h.title}</span>
+                    <span class="h-code">${h.code}</span>
+                </div>
+                <div class="h-icon"><i class="fa fa-file-pdf"></i></div>
+            `;
+        } else {
+            div.classList.add('disabled');
+            div.innerHTML = `
+                <div class="h-info">
+                    <span class="h-title">${h.title}</span>
+                    <span class="h-code">${h.code}</span>
+                </div>
+                <div class="h-icon"><i class="fa fa-ban"></i></div>
+            `;
+        }
+        container.appendChild(div);
+    });
+}
+
+function clearHistory() {
+    if(confirm('¿Borrar historial?')) {
+        localStorage.removeItem('scan_history');
+        renderHistory();
     }
 }
+
+// --- UTILS & EVENTS ---
 
 function updateStatus(msg, type) {
     const el = document.getElementById('status-bar');
     if(el) {
         el.innerText = msg;
-        el.className = `status-${type}`;
+        el.className = `status-info status-${type}`; // Mantiene clase base y agrega tipo
     }
 }
 
 function setupEvents() {
-    const btnReset = document.getElementById('btn-reset');
-    if(btnReset) btnReset.addEventListener('click', resetApp);
+    // Botones UI
+    document.getElementById('btn-reset').addEventListener('click', resetApp);
+    document.getElementById('btn-close-pdf').addEventListener('click', closePdfViewer);
     
-    const btnClose = document.getElementById('btn-close-pdf');
-    if(btnClose) btnClose.addEventListener('click', closePdfViewer);
+    // Buscador Manual
+    const searchBtn = document.getElementById('btn-manual-search');
+    const searchInput = document.getElementById('manual-search-input');
+    
+    searchBtn.addEventListener('click', () => {
+        performSearch(searchInput.value);
+    });
+    
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performSearch(searchInput.value);
+    });
 }
