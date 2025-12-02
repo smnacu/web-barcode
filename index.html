@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body>
 
     <!-- Header -->
@@ -30,7 +32,12 @@
 
     <!-- Scanner Area -->
     <main id="scanner-container" class="scanner-view">
-        <div id="reader"></div>
+        <div id="reader" style="position: relative;"></div>
+        <div class="scanner-controls" style="margin-top: 10px;">
+            <button id="btn-switch-camera" class="btn btn-secondary hidden">
+                <i class="fa fa-camera-rotate"></i> Cambiar Cámara
+            </button>
+        </div>
         <p class="instruction">Apunte cámara o use el buscador manual</p>
     </main>
 
@@ -38,7 +45,7 @@
     <main id="result-panel" class="result-view hidden">
         <div class="card">
             <div id="info-content"></div>
-            
+
             <div class="actions">
                 <button id="btn-open-pdf" class="btn btn-primary btn-lg">
                     <i class="fa fa-file-pdf"></i> Ver Documento
@@ -47,7 +54,7 @@
                     <i class="fa fa-redo"></i> Nueva Búsqueda
                 </button>
             </div>
-            
+
             <div id="pdf-container"></div>
         </div>
     </main>
@@ -82,4 +89,5 @@
         }
     </script>
 </body>
+
 </html>

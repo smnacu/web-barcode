@@ -70,7 +70,7 @@ function readCSV($filename) {
     }
     
     if (file_exists($path) && ($handle = fopen($path, "r")) !== FALSE) {
-        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) { // Changed delimiter to comma as per standard CSV
+        while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) { // Changed delimiter to semicolon
             $rows[] = $data;
         }
         fclose($handle);
@@ -90,7 +90,7 @@ function writeCSV($filename, $data) {
 
     if ($fp = fopen($path, 'w')) {
         foreach ($data as $fields) {
-            fputcsv($fp, $fields, ","); // Changed delimiter to comma
+            fputcsv($fp, $fields, ";"); // Changed delimiter to semicolon
         }
         fclose($fp);
         return true;

@@ -62,7 +62,7 @@ function buscarEnLibro($codigo, $config) {
     
     $codigo = mb_strtolower($codigo, 'UTF-8');
 
-    while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+    while (($data = fgetcsv($handle, 1000, ';')) !== false) {
         if (count($data) >= 3) {
             $codArt = limpiarString($data[0]);
             $descripcion = limpiarString($data[1]);

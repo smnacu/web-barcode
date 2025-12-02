@@ -7,37 +7,105 @@ const CONFIG = {
     fps: 10,
     qrbox: 250,
     aspectRatio: 1.0,
-    historyLimit: 5 // Cuántos items guardamos en historial
+    historyLimit: 5
 };
 
-let html5QrcodeScanner = null;
+let html5QrCode = null;
 let isScanning = false;
+let currentCameraId = null;
+let cameras = [];
+let cameraIndex = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     initScanner();
     setupEvents();
-    renderHistory(); // Cargar historial al iniciar
+    renderHistory();
 });
 
 function initScanner() {
-    if(html5QrcodeScanner) {
-        try { html5QrcodeScanner.clear(); } catch(e) {}
+    // Usamos Html5Qrcode (Pro API) en lugar de Html5QrcodeScanner para control total
+    Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+            cameras = devices;
+
+            // Intentar encontrar cámara frontal (user)
+            // A veces 'label' contiene 'front' o 'anterior'
+            let frontCam = cameras.find(c => c.label.toLowerCase().includes('front') || c.label.toLowerCase().includes('anterior') || c.label.toLowerCase().includes('user'));
+
+            // Si no encuentra explícitamente, usar la primera (que suele ser trasera en móviles, pero user pidió frontal)
+            // Ojo: En móviles, getCameras devuelve todas.
+            // Si queremos forzar frontal, podemos usar facingMode: "user" en start().
+
+            // Estrategia: Guardar IDs y permitir switch.
+            // Iniciar con la que parezca frontal o la primera.
+
+            if (frontCam) {
+                currentCameraId = frontCam.id;
+                cameraIndex = cameras.indexOf(frontCam);
+            } else {
+                currentCameraId = cameras[0].id;
+                cameraIndex = 0;
+            }
+
+            if (cameras.length > 1) {
+                document.getElementById('btn-switch-camera').classList.remove('hidden');
+            }
+
+            startCamera(currentCameraId);
+        } else {
+            updateStatus("No se detectaron cámaras", "error");
+        }
+    }).catch(err => {
+        console.error(err);
+        updateStatus("Error al acceder a cámara", "error");
+    });
+}
+
+function startCamera(cameraId) {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            startInstance(cameraId);
+        }).catch(err => {
+            // Si no estaba corriendo, limpiar e iniciar
+            startInstance(cameraId);
+        });
+    } else {
+        startInstance(cameraId);
     }
+}
 
-    html5QrcodeScanner = new Html5QrcodeScanner(
-        "reader", 
-        { 
-            fps: CONFIG.fps, 
+function startInstance(cameraId) {
+    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+        cameraId,
+        {
+            fps: CONFIG.fps,
             qrbox: CONFIG.qrbox,
-            aspectRatio: CONFIG.aspectRatio,
-            rememberLastUsedCamera: true,
-            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+            aspectRatio: CONFIG.aspectRatio
         },
-        false
-    );
+        (decodedText, decodedResult) => {
+            if (isScanning) return; // Evitar múltiples lecturas seguidas
+            onScanSuccess(decodedText, decodedResult);
+        },
+        (errorMessage) => {
+            // Ignorar errores de frame
+        }
+    ).then(() => {
+        isScanning = false; // Listo para escanear
+        updateStatus("Escaneando...", "info");
+    }).catch(err => {
+        console.error(err);
+        updateStatus("Error al iniciar cámara", "error");
+    });
+}
 
-    html5QrcodeScanner.render(onScanSuccess, (err) => { /* ignorar fallos de frame */ });
-    isScanning = true;
+function switchCamera() {
+    if (cameras.length < 2) return;
+
+    cameraIndex = (cameraIndex + 1) % cameras.length;
+    currentCameraId = cameras[cameraIndex].id;
+    startCamera(currentCameraId);
 }
 
 // --- CORE SEARCH LOGIC ---
@@ -48,34 +116,38 @@ function performSearch(query) {
         return;
     }
 
-    // Pausar scanner si estaba activo para ahorrar recursos
-    if (isScanning && html5QrcodeScanner) {
-        html5QrcodeScanner.pause(true);
-        isScanning = false;
-    }
-
+    // Pausar scanner visualmente (aunque ya no procesamos onScanSuccess)
+    isScanning = true;
     updateStatus("Buscando...", "warning");
 
     fetch(`api/scan.php?code=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
             if (data.found) {
+                addToHistory(data);
+
+                // AUTO OPEN PDF SI EXISTE
+                if (data.pdf_available && data.pdf_url) {
+                    openPdfViewer(data.pdf_url);
+                    // Opcional: Mostrar resultado brevemente o resetear
+                    // Si abrimos tab, el usuario vuelve y ve el resultado
+                }
+
                 showResult(data);
-                addToHistory(data); // <--- GUARDAR EN HISTORIAL
             } else {
                 updateStatus("No encontrado: " + query, "error");
-                // Si fue manual, no reiniciamos scanner auto, dejamos que el user decida.
-                // Si fue por scan, reiniciamos.
+                // Permitir escanear de nuevo tras un breve delay
+                setTimeout(() => { isScanning = false; }, 2000);
             }
         })
         .catch(err => {
             console.error(err);
             updateStatus("Error de conexión", "error");
+            isScanning = false;
         });
 }
 
 function onScanSuccess(decodedText, decodedResult) {
-    if (!isScanning) return;
     performSearch(decodedText);
 }
 
@@ -85,7 +157,7 @@ function showResult(data) {
     const resultDiv = document.getElementById('result-panel');
     const scannerDiv = document.getElementById('scanner-container');
     const searchDiv = document.querySelector('.search-container');
-    
+
     // Ocultar búsqueda y scanner
     scannerDiv.classList.add('hidden');
     searchDiv.classList.add('hidden');
@@ -93,7 +165,6 @@ function showResult(data) {
 
     // Render Datos
     const infoContainer = document.getElementById('info-content');
-    // Usamos la columna 1 como Título principal (ej: Descripción), o la 0 si no hay más
     const mainTitle = data.data[1] ? data.data[1] : data.data[0];
     const subTitle = data.data[0]; // Código
 
@@ -102,9 +173,9 @@ function showResult(data) {
         <div class="result-code">REF: ${subTitle}</div>
         <ul class="data-list">
     `;
-    
+
     data.data.forEach((val, index) => {
-        if(index > 1 && val.trim() !== "") { 
+        if (index > 1 && val.trim() !== "") {
             html += `<li><strong>Col ${index}:</strong> ${val}</li>`;
         }
     });
@@ -114,72 +185,56 @@ function showResult(data) {
     // Botón PDF
     const btnPdf = document.getElementById('btn-open-pdf');
     const pdfContainer = document.getElementById('pdf-container');
-    
+
     if (data.pdf_available) {
         btnPdf.style.display = 'inline-flex';
         btnPdf.onclick = () => openPdfViewer(data.pdf_url);
-        // Guardamos URL en el elemento para reuso fácil
         btnPdf.dataset.url = data.pdf_url;
     } else {
         btnPdf.style.display = 'none';
         pdfContainer.innerHTML = '<p class="no-pdf"><i class="fa fa-exclamation-triangle"></i> Sin PDF asociado</p>';
     }
-    
+
     updateStatus("Datos cargados correctamente", "success");
 }
 
 function resetApp() {
-    closePdfViewer();
     document.getElementById('result-panel').classList.add('hidden');
     document.querySelector('.search-container').classList.remove('hidden');
     document.getElementById('scanner-container').classList.remove('hidden');
     document.getElementById('manual-search-input').value = '';
-    
-    if(html5QrcodeScanner) {
-        html5QrcodeScanner.resume();
-        isScanning = true;
-        updateStatus("Listo para buscar", "info");
+
+    isScanning = false;
+    updateStatus("Listo para buscar", "info");
+
+    // Asegurar que la cámara siga corriendo o reiniciarla si se detuvo
+    if (html5QrCode && !html5QrCode.isScanning) {
+        startCamera(currentCameraId);
     }
 }
 
 // --- PDF VIEWER ---
 
 function openPdfViewer(url) {
-    const viewer = document.getElementById('pdf-modal');
-    const iframe = document.getElementById('pdf-iframe');
-    iframe.src = `${url}?t=${new Date().getTime()}`;
-    viewer.classList.remove('hidden');
-}
-
-function closePdfViewer() {
-    const viewer = document.getElementById('pdf-modal');
-    const iframe = document.getElementById('pdf-iframe');
-    iframe.src = "about:blank";
-    viewer.classList.add('hidden');
+    window.open(url, '_blank');
 }
 
 // --- HISTORIAL (LOCAL STORAGE) ---
 
 function addToHistory(data) {
     let history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-    
-    // Objeto a guardar (simplificado)
+
     const item = {
         code: data.code,
-        title: data.data[1] || data.data[0], // Descripción o Código
+        title: data.data[1] || data.data[0],
         pdf_url: data.pdf_url,
         timestamp: new Date().getTime()
     };
 
-    // Evitar duplicados recientes (borrar si existe para ponerlo primero)
     history = history.filter(h => h.code !== item.code);
-    
-    // Agregar al principio
     history.unshift(item);
-    
-    // Limitar cantidad
     if (history.length > CONFIG.historyLimit) history.pop();
-    
+
     localStorage.setItem('scan_history', JSON.stringify(history));
     renderHistory();
 }
@@ -187,7 +242,7 @@ function addToHistory(data) {
 function renderHistory() {
     const container = document.getElementById('history-list');
     const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-    
+
     if (history.length === 0) {
         container.innerHTML = '<p class="text-muted">Sin historial reciente.</p>';
         return;
@@ -197,7 +252,6 @@ function renderHistory() {
     history.forEach(h => {
         const div = document.createElement('div');
         div.className = 'history-item';
-        // Si tiene PDF, habilitamos click
         if (h.pdf_url) {
             div.onclick = () => openPdfViewer(h.pdf_url);
             div.innerHTML = `
@@ -222,7 +276,7 @@ function renderHistory() {
 }
 
 function clearHistory() {
-    if(confirm('¿Borrar historial?')) {
+    if (confirm('¿Borrar historial?')) {
         localStorage.removeItem('scan_history');
         renderHistory();
     }
@@ -232,25 +286,23 @@ function clearHistory() {
 
 function updateStatus(msg, type) {
     const el = document.getElementById('status-bar');
-    if(el) {
+    if (el) {
         el.innerText = msg;
-        el.className = `status-info status-${type}`; // Mantiene clase base y agrega tipo
+        el.className = `status-info status-${type}`;
     }
 }
 
 function setupEvents() {
-    // Botones UI
     document.getElementById('btn-reset').addEventListener('click', resetApp);
-    document.getElementById('btn-close-pdf').addEventListener('click', closePdfViewer);
-    
-    // Buscador Manual
+    document.getElementById('btn-switch-camera').addEventListener('click', switchCamera);
+
     const searchBtn = document.getElementById('btn-manual-search');
     const searchInput = document.getElementById('manual-search-input');
-    
+
     searchBtn.addEventListener('click', () => {
         performSearch(searchInput.value);
     });
-    
+
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performSearch(searchInput.value);
     });
