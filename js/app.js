@@ -360,11 +360,29 @@ function handleFound(data) {
     if (!win || win.closed) {
         console.log('ℹ️ Popup no se abrió. PDF disponible en historial.');
     }
+    // Actualizar log visual en header
+    updateScanLog(`OK · ${data.ean} · ${data.descripcion}`);
 }
 
 function handleNotFound(ean) {
     addToHistory(ean, '❌ No encontrado en base de datos', null, false);
     console.log('⚠️ EAN no encontrado:', ean);
+    updateScanLog(`NO · ${ean} · No encontrado`);
+}
+
+/**
+ * Actualiza el log visible en el header (`#scan-log`) con mensaje y timestamp
+ */
+function updateScanLog(message) {
+    try {
+        const el = document.getElementById('scan-log');
+        if (!el) return;
+        const now = new Date();
+        const ts = now.toLocaleTimeString();
+        el.innerText = `${ts} — ${message}`;
+    } catch (e) {
+        console.warn('updateScanLog error', e);
+    }
 }
 
 function renderHistoryItem(list, ean, desc, url, success) {
