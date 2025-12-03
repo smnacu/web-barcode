@@ -1,93 +1,161 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ITDelivery Scanner</title>
+    <title>Scanner ITDelivery</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="css/styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Iconos Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* Animación suave para items del historial */
+        .history-item { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Ajuste para que el video ocupe todo el contenedor sin bordes raros */
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; }
+    </style>
 </head>
+<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden">
 
-<body>
-
-    <!-- Header -->
-    <header class="app-header">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <img src="img/logo_bw.png" alt="Logo" class="logo">
-            <div id="status-bar" class="status-info">Sistema Online</div>
+    <!-- Header Fijo -->
+    <header class="bg-gray-900 border-b border-gray-800 p-4 flex justify-between items-center shrink-0 z-30 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="bg-red-600 p-1.5 rounded-lg">
+                <i class="ph-bold ph-scan text-white text-lg"></i>
+            </div>
+            <h1 class="font-bold text-lg tracking-wide text-gray-100">ITDelivery</h1>
         </div>
-        <a href="admin.html" class="settings-link"><i class="fa fa-cog"></i></a>
+        <a href="admin.html" class="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white p-2 rounded-lg transition-colors">
+            <i class="ph-fill ph-gear text-xl"></i>
+        </a>
     </header>
 
-    <!-- Search Manual Area -->
-    <div class="search-container">
-        <div class="input-wrapper">
-            <i class="fa fa-search search-icon"></i>
-            <input type="text" id="manual-search-input" placeholder="Buscar por Código, Nombre o Art...">
-            <button id="btn-manual-search" class="btn btn-primary btn-sm">BUSCAR</button>
-        </div>
-    </div>
-
-    <!-- Scanner Area -->
-    <main id="scanner-container" class="scanner-view">
-        <div id="reader" style="position: relative;"></div>
-        <div class="scanner-controls" style="margin-top: 10px;">
-            <button id="btn-switch-camera" class="btn btn-secondary hidden">
-                <i class="fa fa-camera-rotate"></i> Cambiar Cámara
+    <!-- Área Principal -->
+    <main class="flex-grow flex flex-col relative w-full max-w-lg mx-auto bg-black">
+        
+        <!-- PANTALLA DE PERMISOS (Solo si falla el auto-start) -->
+        <div id="start-screen" class="hidden absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
+            <div class="bg-gray-800 p-6 rounded-full mb-6">
+                <i class="ph-duotone ph-camera-slash text-6xl text-gray-500"></i>
+            </div>
+            <h2 class="text-xl font-bold mb-2">Cámara Desactivada</h2>
+            <p class="text-gray-400 text-sm mb-8 px-4">Necesitamos acceso a tu cámara para escanear los códigos de barras.</p>
+            <button onclick="startScanner()" class="w-full max-w-xs bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
+                ACTIVAR CÁMARA
             </button>
+            <p id="error-msg" class="text-red-400 text-xs mt-6 font-mono hidden"></p>
         </div>
-        <p class="instruction">Apunte cámara o use el buscador manual</p>
-    </main>
 
-    <!-- Result Area (Oculto por defecto) -->
-    <main id="result-panel" class="result-view hidden">
-        <div class="card">
-            <div id="info-content"></div>
-
-            <div class="actions">
-                <button id="btn-open-pdf" class="btn btn-primary btn-lg">
-                    <i class="fa fa-file-pdf"></i> Ver Documento
-                </button>
-                <button id="btn-reset" class="btn btn-secondary btn-lg">
-                    <i class="fa fa-redo"></i> Nueva Búsqueda
-                </button>
+        <!-- CONTENEDOR CÁMARA -->
+        <div id="scanner-container" class="relative flex-grow overflow-hidden bg-black">
+            <!-- El video se inyecta acá -->
+            <div id="reader" class="w-full h-full"></div>
+            
+            <!-- Guía Visual (Cuadrado Rojo) -->
+            <div class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+                <div class="w-[80%] aspect-[3/2] border-2 border-red-500/80 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] relative">
+                    <!-- Esquinas decorativas -->
+                    <div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-red-500 -mt-1 -ml-1"></div>
+                    <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-red-500 -mt-1 -mr-1"></div>
+                    <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-red-500 -mb-1 -ml-1"></div>
+                    <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-red-500 -mb-1 -mr-1"></div>
+                </div>
             </div>
 
-            <div id="pdf-container"></div>
+            <!-- Botón Rotar (Flotante Abajo Izq) -->
+            <button onclick="switchCamera()" class="absolute bottom-6 left-6 z-20 bg-gray-900/80 backdrop-blur border border-gray-600 text-white p-3 rounded-full shadow-lg active:scale-90 transition-all">
+                <i class="ph-bold ph-arrows-clockwise text-2xl"></i>
+            </button>
+
+            <!-- Status (Flotante Abajo Der) -->
+            <div class="absolute bottom-6 right-6 z-20 pointer-events-none">
+                <span id="scan-status" class="bg-green-500/90 text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1">
+                    <span class="w-2 h-2 bg-black rounded-full animate-pulse"></span>
+                    Activo
+                </span>
+            </div>
+        </div>
+
+        <!-- HISTORIAL (Panel Deslizable Inferior) -->
+        <div class="bg-gray-900 border-t border-gray-800 h-[35%] flex flex-col shrink-0 rounded-t-2xl -mt-4 z-20 relative shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+            <!-- Barra de agarre visual -->
+            <div class="w-full flex justify-center pt-3 pb-1">
+                <div class="w-12 h-1.5 bg-gray-700 rounded-full"></div>
+            </div>
+            
+            <div class="px-4 py-2 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-sm font-semibold text-gray-300">Historial de Escaneos</h3>
+                <span class="text-[10px] bg-gray-800 text-gray-500 px-2 py-0.5 rounded border border-gray-700">HOY</span>
+            </div>
+
+            <div id="history-list" class="flex-grow overflow-y-auto p-3 space-y-2.5 scrollbar-hide">
+                <!-- Los items se agregan acá por JS -->
+            </div>
         </div>
     </main>
 
-    <!-- Historial -->
-    <section id="history-section" class="history-panel">
-        <h3><i class="fa fa-history"></i> Historial Reciente</h3>
-        <div id="history-list" class="history-list">
-            <!-- Se llena con JS -->
-            <p class="text-muted">No hay búsquedas recientes.</p>
-        </div>
-        <button onclick="clearHistory()" class="btn-text-only">Borrar Historial</button>
-    </section>
-
-    <!-- PDF Modal Overlay -->
-    <div id="pdf-modal" class="modal hidden">
-        <div class="modal-header">
-            <span>Visualizador Daruma</span>
-            <button id="btn-close-pdf" class="btn-close"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-            <iframe id="pdf-iframe" src="about:blank"></iframe>
-        </div>
-    </div>
-
-    <!-- Scripts -->
     <script src="js/libs/html5-qrcode.min.js"></script>
     <script src="js/app.js"></script>
+    
+    <!-- Registrar Service Worker para PWA offline -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('js/sw.js');
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./js/sw.js')
+                    .then(reg => {
+                        console.log('✅ Service Worker registrado:', reg.scope);
+                        
+                        // Escuchar actualizaciones
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('🔄 Actualización disponible');
+                                    // Mostrar notificación opcional
+                                    showUpdateNotification();
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => {
+                        console.warn('⚠️ Error registrando Service Worker:', err.message);
+                    });
+            });
+        }
+
+        /**
+         * Notificar actualizaciones disponibles (opcional)
+         */
+        function showUpdateNotification() {
+            const updateMsg = document.createElement('div');
+            updateMsg.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                right: 20px;
+                background: #2563eb;
+                color: white;
+                padding: 12px;
+                border-radius: 8px;
+                z-index: 9999;
+                font-size: 14px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            updateMsg.innerText = '🔄 Actualización disponible. Recarga la página.';
+            document.body.appendChild(updateMsg);
+        }
+
+        // Detectar si se ejecuta como PWA
+        if (window.navigator.standalone === true) {
+            console.log('📱 Ejecutándose como PWA instalada');
         }
     </script>
 </body>
-
 </html>

@@ -1,309 +1,376 @@
+// ============================================================================
+// VARIABLES GLOBALES Y CONSTANTES
+// ============================================================================
+
+let html5QrcodeScanner = null;
+let isProcessing = false;
+let currentFacingMode = "user"; // Arranca con la frontal (Selfie)
+
+// Control de deduplicación de escaneos
+let lastScannedEAN = null;
+let lastScanTime = 0;
+const SCAN_COOLDOWN_MS = 3000; // 3 segundos entre escaneos iguales
+
+// Persistencia en Storage
+const STORAGE_KEY = 'barcodeC_history';
+const MAX_HISTORY_ITEMS = 30;
+
+// Sonido "Beep" corto y profesional
+const beep = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
+
+// ============================================================================
+// UTILIDADES DE STORAGE
+// ============================================================================
+
 /**
- * Lógica Core - Scanner, Buscador Manual e Historial
- * Daruma Consulting SRL
+ * Cargar historial desde localStorage
  */
+function loadHistoryFromStorage() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        console.warn('⚠️ LocalStorage no disponible:', e.message);
+        return [];
+    }
+}
 
-const CONFIG = {
-    fps: 10,
-    qrbox: 250,
-    aspectRatio: 1.0,
-    historyLimit: 5
-};
+/**
+ * Guardar historial en localStorage
+ */
+function saveHistoryToStorage(items) {
+    try {
+        // Mantener máximo 30 items
+        const limited = items.slice(0, MAX_HISTORY_ITEMS);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(limited));
+    } catch (e) {
+        console.error('❌ Error guardando historial:', e.message);
+    }
+}
 
-let html5QrCode = null;
-let isScanning = false;
-let currentCameraId = null;
-let cameras = [];
-let cameraIndex = 0;
+/**
+ * Limpiar historial completamente
+ */
+function clearHistory() {
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+        document.getElementById('history-list').innerHTML = '';
+    } catch (e) {
+        console.warn('Error limpiando storage:', e.message);
+    }
+}
+
+/**
+ * Asegurar compatibilidad con Android 11+
+ */
+function ensureAndroidCompatibility() {
+    // Fix viewport para tablets
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (viewport) {
+        viewport.setAttribute('content', 
+            'width=device-width, initial-scale=1.0, maximum-scale=1.0, ' +
+            'user-scalable=no, viewport-fit=cover'
+        );
+    }
+
+    // Prevenir zoom accidental en inputs
+    document.addEventListener('touchstart', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    // Deshabilitar pull-to-refresh en Android
+    document.body.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+}
+
+// ============================================================================
+// INICIALIZACIÓN
+// ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    initScanner();
-    setupEvents();
-    renderHistory();
+    console.log('🚀 Iniciando aplicación...');
+    
+    // Asegurar compatibilidad
+    ensureAndroidCompatibility();
+    
+    // Registrar Service Worker para PWA offline
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+            .catch(err => console.warn('⚠️ Error registrando SW:', err.message));
+    }
+    
+    // Detectar si se ejecuta como PWA
+    if (window.navigator.standalone === true) {
+        console.log('📱 Ejecutándose como PWA instalada');
+    }
+    
+    // Cargar historial guardado
+    const stored = loadHistoryFromStorage();
+    const historyList = document.getElementById('history-list');
+    
+    stored.forEach(item => {
+        renderHistoryItem(historyList, item.ean, item.desc, item.url, item.success);
+    });
+    
+    // Iniciar scanner
+    startScanner();
 });
 
-function initScanner() {
-    // Usamos Html5Qrcode (Pro API) en lugar de Html5QrcodeScanner para control total
-    Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length) {
-            cameras = devices;
+async function startScanner() {
+    const startScreen = document.getElementById('start-screen');
+    const scannerContainer = document.getElementById('scanner-container');
+    const errorMsg = document.getElementById('error-msg');
+    const statusBadge = document.getElementById('scan-status');
 
-            // Intentar encontrar cámara frontal (user)
-            // A veces 'label' contiene 'front' o 'anterior'
-            let frontCam = cameras.find(c => c.label.toLowerCase().includes('front') || c.label.toLowerCase().includes('anterior') || c.label.toLowerCase().includes('user'));
-
-            // Si no encuentra explícitamente, usar la primera (que suele ser trasera en móviles, pero user pidió frontal)
-            // Ojo: En móviles, getCameras devuelve todas.
-            // Si queremos forzar frontal, podemos usar facingMode: "user" en start().
-
-            // Estrategia: Guardar IDs y permitir switch.
-            // Iniciar con la que parezca frontal o la primera.
-
-            if (frontCam) {
-                currentCameraId = frontCam.id;
-                cameraIndex = cameras.indexOf(frontCam);
-            } else {
-                currentCameraId = cameras[0].id;
-                cameraIndex = 0;
-            }
-
-            if (cameras.length > 1) {
-                document.getElementById('btn-switch-camera').classList.remove('hidden');
-            }
-
-            startCamera(currentCameraId);
-        } else {
-            updateStatus("No se detectaron cámaras", "error");
+    errorMsg.classList.add('hidden');
+    
+    // Si ya existe instancia, matar para reiniciar (útil para rotar cámara)
+    if (html5QrcodeScanner) {
+        try { 
+            await html5QrcodeScanner.stop(); 
+            html5QrcodeScanner.clear(); 
+        } catch (e) {
+            console.warn('⚠️ Error limpiando scanner anterior:', e.message);
         }
-    }).catch(err => {
-        console.error(err);
-        updateStatus("Error al acceder a cámara", "error");
-    });
-}
+    }
 
-function startCamera(cameraId) {
-    if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            html5QrCode.clear();
-            startInstance(cameraId);
-        }).catch(err => {
-            // Si no estaba corriendo, limpiar e iniciar
-            startInstance(cameraId);
+    try {
+        startScreen.classList.add('hidden');
+        scannerContainer.classList.remove('hidden');
+
+        html5QrcodeScanner = new Html5Qrcode("reader");
+
+        const config = { 
+            fps: 15,
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.0,
+            disableFlip: false,
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8
+            ]
+        };
+
+        const constraints = { 
+            facingMode: { ideal: currentFacingMode } 
+        };
+
+        // Timeout de 10s para cámaras lentas
+        const startPromise = html5QrcodeScanner.start(
+            constraints,
+            config,
+            onScanSuccess,
+            onScanFailure
+        );
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout iniciando cámara (10s)')), 10000)
+        );
+
+        await Promise.race([startPromise, timeoutPromise]);
+        
+        statusBadge.innerHTML = '<span class="w-2 h-2 bg-black rounded-full animate-pulse"></span> ACTIVO';
+        statusBadge.className = "bg-green-500/90 text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1";
+
+    } catch (err) {
+        console.error("❌ Error iniciando cámara:", err);
+        scannerContainer.classList.add('hidden');
+        startScreen.classList.remove('hidden');
+        
+        let msg = 'Error desconocido.';
+        
+        if (err.name === 'NotAllowedError' || err.message.includes('Permission')) {
+            msg = '🔐 Permiso denegado. Habilita cámara en ajustes del navegador.';
+        } else if (err.name === 'NotFoundError' || err.message.includes('device')) {
+            msg = '📷 No se encontró cámara en este dispositivo.';
+        } else if (err.name === 'NotReadableError') {
+            msg = '⚠️ Cámara en uso. Cierra otras apps que la usen.';
+        } else if (err.message.includes('Timeout')) {
+            msg = '⏱️ Timeout: cámara tardó demasiado en iniciar.';
+        } else if (err.message.includes('HTTPS')) {
+            msg = '🔒 Se requiere HTTPS o localhost para cámara.';
+        }
+        
+        errorMsg.innerText = msg;
+        errorMsg.classList.remove('hidden');
+        
+        console.error('📋 Detalle del error:', {
+            name: err.name,
+            message: err.message,
+            code: err.code
         });
-    } else {
-        startInstance(cameraId);
     }
 }
 
-function startInstance(cameraId) {
-    html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-        cameraId,
-        {
-            fps: CONFIG.fps,
-            qrbox: CONFIG.qrbox,
-            aspectRatio: CONFIG.aspectRatio
-        },
-        (decodedText, decodedResult) => {
-            if (isScanning) return; // Evitar múltiples lecturas seguidas
-            onScanSuccess(decodedText, decodedResult);
-        },
-        (errorMessage) => {
-            // Ignorar errores de frame
-        }
-    ).then(() => {
-        isScanning = false; // Listo para escanear
-        updateStatus("Escaneando...", "info");
-    }).catch(err => {
-        console.error(err);
-        updateStatus("Error al iniciar cámara", "error");
-    });
+async function switchCamera() {
+    // Feedback visual en el botón
+    const btnIcon = document.querySelector('button[onclick="switchCamera()"] i');
+    btnIcon.classList.add('animate-spin');
+    setTimeout(() => btnIcon.classList.remove('animate-spin'), 500);
+
+    currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+    await startScanner();
 }
 
-function switchCamera() {
-    if (cameras.length < 2) return;
-
-    cameraIndex = (cameraIndex + 1) % cameras.length;
-    currentCameraId = cameras[cameraIndex].id;
-    startCamera(currentCameraId);
-}
-
-// --- CORE SEARCH LOGIC ---
-
-function performSearch(query) {
-    if (!query || query.trim().length < 2) {
-        updateStatus("Ingrese al menos 2 caracteres", "error");
+async function onScanSuccess(decodedText, decodedResult) {
+    // Deduplicación: Si es el mismo EAN en menos de 3s, ignorar
+    const now = Date.now();
+    if (decodedText === lastScannedEAN && (now - lastScanTime) < SCAN_COOLDOWN_MS) {
+        console.log('⏸️ Escaneo duplicado ignorado:', decodedText);
         return;
     }
 
-    // Pausar scanner visualmente (aunque ya no procesamos onScanSuccess)
-    isScanning = true;
-    updateStatus("Buscando...", "warning");
+    if (isProcessing) return;
+    isProcessing = true;
 
-    fetch(`api/scan.php?code=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.found) {
-                addToHistory(data);
+    lastScannedEAN = decodedText;
+    lastScanTime = now;
 
-                // AUTO OPEN PDF SI EXISTE
-                if (data.pdf_available && data.pdf_url) {
-                    openPdfViewer(data.pdf_url);
-                    // Opcional: Mostrar resultado brevemente o resetear
-                    // Si abrimos tab, el usuario vuelve y ve el resultado
-                }
+    // Feedback inmediato
+    beep.play().catch(e => console.log('🔇 Audio bloqueado en este dispositivo'));
+    
+    // Cambiar estado visualmente
+    const statusBadge = document.getElementById('scan-status');
+    statusBadge.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> PROCESANDO';
+    statusBadge.className = "bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1";
 
-                showResult(data);
-            } else {
-                updateStatus("No encontrado: " + query, "error");
-                // Permitir escanear de nuevo tras un breve delay
-                setTimeout(() => { isScanning = false; }, 2000);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            updateStatus("Error de conexión", "error");
-            isScanning = false;
-        });
+    try {
+        const response = await fetch(`api/buscar.php?ean=${encodeURIComponent(decodedText)}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+
+        if (data.found) {
+            handleFound(data);
+        } else {
+            handleNotFound(decodedText);
+        }
+    } catch (error) {
+        console.error('❌ Error en búsqueda:', error);
+        addToHistory(decodedText, `Error de Red: ${error.message}`, null, false);
+    } finally {
+        // Pausa para no escanear lo mismo múltiples veces
+        setTimeout(() => { 
+            isProcessing = false;
+            // Restaurar estado
+            const statusBadge = document.getElementById('scan-status');
+            statusBadge.innerHTML = '<span class="w-2 h-2 bg-black rounded-full animate-pulse"></span> ACTIVO';
+            statusBadge.className = "bg-green-500/90 text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1";
+        }, SCAN_COOLDOWN_MS);
+    }
 }
 
-function onScanSuccess(decodedText, decodedResult) {
-    performSearch(decodedText);
+function onScanFailure(error) {
+    // Nada, ruido de fondo
 }
 
-// --- UI HANDLING ---
+function handleFound(data) {
+    // Construir la URL completa del PDF
+    const fullUrl = data.pdf_base_url + data.pdf_name + '.pdf';
+    
+    // Agregar al historial (ÉXITO)
+    addToHistory(data.ean, data.descripcion, fullUrl, true);
 
-function showResult(data) {
-    const resultDiv = document.getElementById('result-panel');
-    const scannerDiv = document.getElementById('scanner-container');
-    const searchDiv = document.querySelector('.search-container');
+    // Log para debugging (servidor local = sin validación)
+    console.log('📄 PDF enlazado (confíe en el enlace del historial):', {
+        ean: data.ean,
+        url: fullUrl,
+        timestamp: new Date().toISOString()
+    });
 
-    // Ocultar búsqueda y scanner
-    scannerDiv.classList.add('hidden');
-    searchDiv.classList.add('hidden');
-    resultDiv.classList.remove('hidden');
+    // Intentar abrir en nueva pestaña
+    // Nota: Como es servidor local, no hay validación si se abre o no
+    const win = window.open(fullUrl, '_blank');
+    if (!win || win.closed) {
+        console.log('ℹ️ Popup no se abrió. PDF disponible en historial.');
+    }
+}
 
-    // Render Datos
-    const infoContainer = document.getElementById('info-content');
-    const mainTitle = data.data[1] ? data.data[1] : data.data[0];
-    const subTitle = data.data[0]; // Código
+function handleNotFound(ean) {
+    addToHistory(ean, '❌ No encontrado en base de datos', null, false);
+    console.log('⚠️ EAN no encontrado:', ean);
+}
 
-    let html = `
-        <h2 class="result-title">${mainTitle}</h2>
-        <div class="result-code">REF: ${subTitle}</div>
-        <ul class="data-list">
+function renderHistoryItem(list, ean, desc, url, success) {
+    const item = document.createElement('div');
+    
+    item.className = "history-item bg-gray-800 rounded-lg p-3 flex justify-between items-center border border-gray-700 shadow-sm relative overflow-hidden group";
+    
+    const colorClass = success ? "bg-green-500" : "bg-red-500";
+    
+    let actionButton = '';
+    if (success && url) {
+        actionButton = `
+            <a href="${url}" target="_blank" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md font-bold text-xs transition-colors shadow-lg z-10" onclick="handlePdfClick('${ean}', '${url}'); return true;">
+                <span>ABRIR</span>
+                <i class="ph-bold ph-arrow-square-out text-lg"></i>
+            </a>
+        `;
+    } else {
+        actionButton = `<span class="text-gray-600 text-xs font-mono px-2">---</span>`;
+    }
+
+    item.innerHTML = `
+        <div class="absolute left-0 top-0 bottom-0 w-1 ${colorClass}"></div>
+        
+        <div class="flex flex-col overflow-hidden mr-3 pl-2">
+            <span class="text-[10px] text-gray-400 font-mono tracking-wider uppercase mb-0.5">EAN: ${ean}</span>
+            <span class="text-sm font-medium text-gray-100 truncate leading-tight" title="${desc}">${desc}</span>
+        </div>
+        
+        <div class="shrink-0">
+            ${actionButton}
+        </div>
     `;
 
-    data.data.forEach((val, index) => {
-        if (index > 1 && val.trim() !== "") {
-            html += `<li><strong>Col ${index}:</strong> ${val}</li>`;
-        }
-    });
-    html += `</ul>`;
-    infoContainer.innerHTML = html;
-
-    // Botón PDF
-    const btnPdf = document.getElementById('btn-open-pdf');
-    const pdfContainer = document.getElementById('pdf-container');
-
-    if (data.pdf_available) {
-        btnPdf.style.display = 'inline-flex';
-        btnPdf.onclick = () => openPdfViewer(data.pdf_url);
-        btnPdf.dataset.url = data.pdf_url;
-    } else {
-        btnPdf.style.display = 'none';
-        pdfContainer.innerHTML = '<p class="no-pdf"><i class="fa fa-exclamation-triangle"></i> Sin PDF asociado</p>';
-    }
-
-    updateStatus("Datos cargados correctamente", "success");
+    list.insertBefore(item, list.firstChild);
 }
 
-function resetApp() {
-    document.getElementById('result-panel').classList.add('hidden');
-    document.querySelector('.search-container').classList.remove('hidden');
-    document.getElementById('scanner-container').classList.remove('hidden');
-    document.getElementById('manual-search-input').value = '';
-
-    isScanning = false;
-    updateStatus("Listo para buscar", "info");
-
-    // Asegurar que la cámara siga corriendo o reiniciarla si se detuvo
-    if (html5QrCode && !html5QrCode.isScanning) {
-        startCamera(currentCameraId);
-    }
-}
-
-// --- PDF VIEWER ---
-
-function openPdfViewer(url) {
-    window.open(url, '_blank');
-}
-
-// --- HISTORIAL (LOCAL STORAGE) ---
-
-function addToHistory(data) {
-    let history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-
-    const item = {
-        code: data.code,
-        title: data.data[1] || data.data[0],
-        pdf_url: data.pdf_url,
-        timestamp: new Date().getTime()
+function addToHistory(ean, desc, url, success) {
+    const list = document.getElementById('history-list');
+    
+    // Renderizar en UI
+    renderHistoryItem(list, ean, desc, url, success);
+    
+    // Guardar en localStorage
+    const newItem = {
+        ean,
+        desc,
+        url,
+        success,
+        timestamp: new Date().toISOString()
     };
-
-    history = history.filter(h => h.code !== item.code);
-    history.unshift(item);
-    if (history.length > CONFIG.historyLimit) history.pop();
-
-    localStorage.setItem('scan_history', JSON.stringify(history));
-    renderHistory();
-}
-
-function renderHistory() {
-    const container = document.getElementById('history-list');
-    const history = JSON.parse(localStorage.getItem('scan_history') || '[]');
-
-    if (history.length === 0) {
-        container.innerHTML = '<p class="text-muted">Sin historial reciente.</p>';
-        return;
-    }
-
-    container.innerHTML = '';
-    history.forEach(h => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        if (h.pdf_url) {
-            div.onclick = () => openPdfViewer(h.pdf_url);
-            div.innerHTML = `
-                <div class="h-info">
-                    <span class="h-title">${h.title}</span>
-                    <span class="h-code">${h.code}</span>
-                </div>
-                <div class="h-icon"><i class="fa fa-file-pdf"></i></div>
-            `;
-        } else {
-            div.classList.add('disabled');
-            div.innerHTML = `
-                <div class="h-info">
-                    <span class="h-title">${h.title}</span>
-                    <span class="h-code">${h.code}</span>
-                </div>
-                <div class="h-icon"><i class="fa fa-ban"></i></div>
-            `;
-        }
-        container.appendChild(div);
-    });
-}
-
-function clearHistory() {
-    if (confirm('¿Borrar historial?')) {
-        localStorage.removeItem('scan_history');
-        renderHistory();
+    
+    const existing = loadHistoryFromStorage();
+    const updated = [newItem, ...existing];
+    saveHistoryToStorage(updated);
+    
+    // Limpiar UI (máx 30 items)
+    while (list.children.length > MAX_HISTORY_ITEMS) {
+        list.removeChild(list.lastChild);
     }
 }
 
-// --- UTILS & EVENTS ---
-
-function updateStatus(msg, type) {
-    const el = document.getElementById('status-bar');
-    if (el) {
-        el.innerText = msg;
-        el.className = `status-info status-${type}`;
-    }
-}
-
-function setupEvents() {
-    document.getElementById('btn-reset').addEventListener('click', resetApp);
-    document.getElementById('btn-switch-camera').addEventListener('click', switchCamera);
-
-    const searchBtn = document.getElementById('btn-manual-search');
-    const searchInput = document.getElementById('manual-search-input');
-
-    searchBtn.addEventListener('click', () => {
-        performSearch(searchInput.value);
-    });
-
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performSearch(searchInput.value);
+/**
+ * Callback cuando se abre un PDF desde el historial
+ * Como es servidor local, no hay forma de validar si se abrió
+ */
+function handlePdfClick(ean, url) {
+    console.log('🔗 Abriendo PDF (servidor local - sin validación):', {
+        ean,
+        url,
+        timestamp: new Date().toISOString(),
+        note: 'El navegador abrirá el PDF en nueva pestaña'
     });
 }
