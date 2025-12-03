@@ -224,24 +224,39 @@ async function startScanner() {
             ]
         };
 
-        const constraints = { 
-            facingMode: { ideal: currentFacingMode } 
-        };
+        let triedSimple = false;
 
-        // Timeout de 10s para cámaras lentas
-        const startPromise = html5QrcodeScanner.start(
-            constraints,
-            config,
-            onScanSuccess,
-            onScanFailure
-        );
+        async function tryStart(constraints) {
+            const startPromise = html5QrcodeScanner.start(
+                constraints,
+                config,
+                onScanSuccess,
+                onScanFailure
+            );
 
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout iniciando cámara (10s)')), 10000)
-        );
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout iniciando cámara (10s)')), 10000)
+            );
 
-        await Promise.race([startPromise, timeoutPromise]);
-        
+            return Promise.race([startPromise, timeoutPromise]);
+        }
+
+        // Primero intentar con facingMode ideal
+        try {
+            const constraints = { facingMode: { ideal: currentFacingMode } };
+            await tryStart(constraints);
+        } catch (firstErr) {
+            console.warn('Intento inicial con facingMode falló:', firstErr && firstErr.message);
+            // Intentar fallback simple { video: true } una sola vez
+            triedSimple = true;
+            try {
+                await tryStart({ video: true });
+            } catch (secondErr) {
+                // Re-lanzar el error original para manejo final
+                throw secondErr || firstErr;
+            }
+        }
+
         statusBadge.innerHTML = '<span class="w-2 h-2 bg-black rounded-full animate-pulse"></span> ACTIVO';
         statusBadge.className = "bg-green-500/90 text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1";
 
@@ -252,26 +267,30 @@ async function startScanner() {
         
         let msg = 'Error desconocido.';
         
-        if (err.name === 'NotAllowedError' || err.message.includes('Permission')) {
+        if (err && (err.name === 'NotAllowedError' || (err.message && err.message.toLowerCase().includes('permission')))) {
             msg = '🔐 Permiso denegado. Habilita cámara en ajustes del navegador.';
-        } else if (err.name === 'NotFoundError' || err.message.includes('device')) {
+        } else if (err && (err.name === 'NotFoundError' || (err.message && err.message.toLowerCase().includes('device')))) {
             msg = '📷 No se encontró cámara en este dispositivo.';
-        } else if (err.name === 'NotReadableError') {
+        } else if (err && err.name === 'NotReadableError') {
             msg = '⚠️ Cámara en uso. Cierra otras apps que la usen.';
-        } else if (err.message.includes('Timeout')) {
+        } else if (err && err.message && err.message.toLowerCase().includes('timeout')) {
             msg = '⏱️ Timeout: cámara tardó demasiado en iniciar.';
-        } else if (err.message.includes('HTTPS')) {
+        } else if (err && err.message && err.message.toLowerCase().includes('https')) {
             msg = '🔒 Se requiere HTTPS o localhost para cámara.';
+        } else if (err && err.message) {
+            msg = `❌ Error inicializando cámara: ${err.message}`;
         }
         
         errorMsg.innerText = msg;
         errorMsg.classList.remove('hidden');
         
         console.error('📋 Detalle del error:', {
-            name: err.name,
-            message: err.message,
-            code: err.code
+            name: err && err.name,
+            message: err && err.message,
+            code: err && err.code
         });
+        // Actualizar scan-log con error para visibilidad rápida
+        updateScanLog(msg);
     }
 }
 
