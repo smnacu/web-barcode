@@ -118,9 +118,74 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistoryItem(historyList, item.ean, item.desc, item.url, item.success);
     });
     
-    // Iniciar scanner
-    startScanner();
+    // Intentar pedir permiso y arrancar scanner automáticamente
+    requestCameraPermission();
 });
+
+/**
+ * Request camera permission explicitly to trigger browser prompt
+ * and then start the scanner if permission is granted.
+ */
+async function requestCameraPermission() {
+    const startScreen = document.getElementById('start-screen');
+    const errorMsg = document.getElementById('error-msg');
+
+    // Ocultar mensaje de error por defecto
+    if (errorMsg) errorMsg.classList.add('hidden');
+
+    // Algunos navegadores requieren un gesto del usuario para abrir permisos.
+    // Usamos Permissions API cuando esté disponible para detectar el estado
+    // y minimizar llamadas fallidas a getUserMedia.
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('🔒 getUserMedia no disponible en este navegador');
+        if (startScreen) startScreen.classList.remove('hidden');
+        return;
+    }
+    try {
+        // Si Permissions API está disponible, pedir estado primero
+        if (navigator.permissions && navigator.permissions.query) {
+            try {
+                const res = await navigator.permissions.query({ name: 'camera' });
+                if (res.state === 'denied') {
+                    // Usuario negó la cámara previamente
+                    if (startScreen) startScreen.classList.remove('hidden');
+                    if (errorMsg) {
+                        errorMsg.innerText = 'Permiso de cámara negado. Habilítalo en los ajustes.';
+                        errorMsg.classList.remove('hidden');
+                    }
+                    return;
+                }
+                // Si state es 'prompt' o 'granted', intentamos getUserMedia
+            } catch (permErr) {
+                // Algunos navegadores pueden fallar al consultar 'camera' — ignorar
+                console.debug('Permissions API camera query falló:', permErr && permErr.message);
+            }
+        }
+
+        const constraints = { video: { facingMode: currentFacingMode } };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        // Permiso concedido: detener stream temporal y arrancar scanner
+        stream.getTracks().forEach(t => t.stop());
+
+        if (startScreen) startScreen.classList.add('hidden');
+
+        // Arrancar scanner (Html5Qrcode solicitará de nuevo acceso si fuese necesario)
+        await startScanner();
+
+    } catch (err) {
+        console.warn('⚠️ Permiso de cámara denegado o error al solicitar permiso:', err && err.name ? err.name : err);
+        if (startScreen) startScreen.classList.remove('hidden');
+        if (errorMsg) {
+            let msg = 'No se pudo acceder a la cámara.';
+            if (err && err.name === 'NotAllowedError') msg = 'Permiso denegado. Habilita la cámara en los ajustes del navegador.';
+            else if (err && err.name === 'NotFoundError') msg = 'No se encontró cámara en este dispositivo.';
+            else if (err && err.name === 'AbortError') msg = 'Solicitando permiso fue abortado.';
+            errorMsg.innerText = msg;
+            errorMsg.classList.remove('hidden');
+        }
+    }
+}
 
 async function startScanner() {
     const startScreen = document.getElementById('start-screen');

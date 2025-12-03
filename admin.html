@@ -6,6 +6,15 @@
     <title>Admin - Daruma Scanner</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
+        :root {
+            --bg-card: #0b0b0f;
+            --bg-input: #111217;
+            --text-main: #e6eef6;
+            --text-muted: #9aa4b2;
+            --brand-red: #dc2626;
+            --error: #f87171;
+            --warning: #f59e0b;
+        }
         /* Estilos específicos para Admin */
         .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .toolbar { background: var(--bg-card); padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; border: 1px solid #333; }
@@ -32,6 +41,24 @@
         }
         .login-box input { width: 100%; padding: 12px; margin: 15px 0; font-size: 16px; box-sizing: border-box; background: var(--bg-input); color: white; border: 1px solid #444; }
         .hidden { display: none !important; }
+
+        /* Header admin oscuro y profesional */
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 20px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+            border-bottom: 1px solid #131316;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+        .header-left { display:flex; align-items:center; gap:12px }
+        .header-left img { height:44px; filter: brightness(0) invert(1); }
+        .header-title { font-size:18px; font-weight:700; color:var(--text-main) }
+        .header-right { display:flex; align-items:center; gap:12px }
+        #admin-log { background: #071018; color: var(--text-muted); padding:8px 12px; border-radius:8px; font-size:12px; border:1px solid #12202a; min-width:200px; max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
     </style>
 </head>
 <body>
@@ -52,10 +79,19 @@
     <!-- Contenido Admin (Oculto hasta loguear) -->
     <div id="admin-content" class="hidden">
         <header class="app-header">
-            <h1 style="color:white; margin:0; font-size: 1.2rem;">Panel ITDelivery</h1>
-            <div>
-                <button onclick="doLogout()" class="btn btn-secondary btn-sm">Salir</button>
-                <a href="index.html" class="btn btn-secondary btn-sm">Ir a Scanner</a>
+            <div class="header-left">
+                <img src="img/logo_bw.png" alt="Logo">
+                <div>
+                    <div class="header-title">Panel ITDelivery - Administración</div>
+                    <div style="font-size:12px; color:var(--text-muted)">Gestión CSV & Configuración</div>
+                </div>
+                <div id="admin-log">Sin eventos</div>
+            </div>
+            <div class="header-right">
+                <div>
+                    <button onclick="doLogout()" class="btn btn-secondary btn-sm">Salir</button>
+                    <a href="index.html" class="btn btn-secondary btn-sm">Ir a Scanner</a>
+                </div>
             </div>
         </header>
 
@@ -165,6 +201,16 @@
             document.getElementById('login-overlay').classList.add('hidden');
             document.getElementById('admin-content').classList.remove('hidden');
             loadConfig();
+            appendAdminLog('Usuario autenticado');
+        }
+
+        function appendAdminLog(msg) {
+            try {
+                const el = document.getElementById('admin-log');
+                if (!el) return;
+                const now = new Date().toLocaleTimeString();
+                el.innerText = `${now} — ${msg}`;
+            } catch (e) { console.warn('appendAdminLog error', e); }
         }
 
         // --- LÓGICA DE ADMIN ---
