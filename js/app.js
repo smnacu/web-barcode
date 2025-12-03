@@ -139,6 +139,10 @@ async function requestCameraPermission() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.warn('🔒 getUserMedia no disponible en este navegador');
         if (startScreen) startScreen.classList.remove('hidden');
+        if (errorMsg) {
+            errorMsg.innerText = '❌ Tu navegador no soporta acceso a cámara';
+            errorMsg.classList.remove('hidden');
+        }
         return;
     }
     try {
@@ -146,6 +150,7 @@ async function requestCameraPermission() {
         if (navigator.permissions && navigator.permissions.query) {
             try {
                 const res = await navigator.permissions.query({ name: 'camera' });
+                console.log('📍 Permissions API status:', res.state);
                 if (res.state === 'denied') {
                     // Usuario negó la cámara previamente
                     if (startScreen) startScreen.classList.remove('hidden');
@@ -162,11 +167,13 @@ async function requestCameraPermission() {
             }
         }
 
+        console.log('🎯 Intentando getUserMedia con constraints:', { video: { facingMode: currentFacingMode } });
         const constraints = { video: { facingMode: currentFacingMode } };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         // Permiso concedido: detener stream temporal y arrancar scanner
         stream.getTracks().forEach(t => t.stop());
+        console.log('✅ Permiso de cámara concedido. Iniciando scanner...');
 
         if (startScreen) startScreen.classList.add('hidden');
 
@@ -174,13 +181,18 @@ async function requestCameraPermission() {
         await startScanner();
 
     } catch (err) {
-        console.warn('⚠️ Permiso de cámara denegado o error al solicitar permiso:', err && err.name ? err.name : err);
+        console.warn('⚠️ Error en requestCameraPermission:', {
+            name: err && err.name,
+            message: err && err.message,
+            code: err && err.code
+        });
         if (startScreen) startScreen.classList.remove('hidden');
         if (errorMsg) {
             let msg = 'No se pudo acceder a la cámara.';
             if (err && err.name === 'NotAllowedError') msg = 'Permiso denegado. Habilita la cámara en los ajustes del navegador.';
             else if (err && err.name === 'NotFoundError') msg = 'No se encontró cámara en este dispositivo.';
             else if (err && err.name === 'AbortError') msg = 'Solicitando permiso fue abortado.';
+            else if (err && err.message) msg = `Error: ${err.message}`;
             errorMsg.innerText = msg;
             errorMsg.classList.remove('hidden');
         }
@@ -243,16 +255,21 @@ async function startScanner() {
 
         // Primero intentar con facingMode ideal
         try {
+            console.log('🎬 Intento 1: Constraints con facingMode ideal:', currentFacingMode);
             const constraints = { facingMode: { ideal: currentFacingMode } };
             await tryStart(constraints);
+            console.log('✅ Scanner iniciado exitosamente');
         } catch (firstErr) {
-            console.warn('Intento inicial con facingMode falló:', firstErr && firstErr.message);
+            console.warn('⚠️ Intento 1 falló. Detalle:', firstErr && firstErr.message);
             // Intentar fallback simple { video: true } una sola vez
             triedSimple = true;
             try {
+                console.log('🎬 Intento 2: Fallback con { video: true }');
                 await tryStart({ video: true });
+                console.log('✅ Scanner iniciado en fallback');
             } catch (secondErr) {
                 // Re-lanzar el error original para manejo final
+                console.error('❌ Intento 2 también falló');
                 throw secondErr || firstErr;
             }
         }
@@ -264,6 +281,15 @@ async function startScanner() {
         console.error("❌ Error iniciando cámara:", err);
         scannerContainer.classList.add('hidden');
         startScreen.classList.remove('hidden');
+        
+        // Log detallado para debugging
+        const errDetail = {
+            name: err && err.name || 'unknown',
+            message: err && err.message || 'no message',
+            code: err && err.code || 'no code',
+            toString: err && err.toString && err.toString()
+        };
+        console.error('📋 Detalle completo del error:', errDetail);
         
         let msg = 'Error desconocido.';
         
@@ -278,17 +304,14 @@ async function startScanner() {
         } else if (err && err.message && err.message.toLowerCase().includes('https')) {
             msg = '🔒 Se requiere HTTPS o localhost para cámara.';
         } else if (err && err.message) {
-            msg = `❌ Error inicializando cámara: ${err.message}`;
+            msg = `❌ Error: ${err.message}`;
+        } else if (errDetail.name && errDetail.name !== 'unknown') {
+            msg = `❌ Error (${errDetail.name})`;
         }
         
         errorMsg.innerText = msg;
         errorMsg.classList.remove('hidden');
         
-        console.error('📋 Detalle del error:', {
-            name: err && err.name,
-            message: err && err.message,
-            code: err && err.code
-        });
         // Actualizar scan-log con error para visibilidad rápida
         updateScanLog(msg);
     }
