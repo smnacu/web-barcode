@@ -49,7 +49,8 @@ function loadConfig() {
     if (file_exists($config_file)) {
         return json_decode(file_get_contents($config_file), true);
     }
-    return ['ruta_pdf' => '../Pdf/', 'ruta_csv' => '../csv/Libro.csv', 'timeout_segundos' => 30];
+    // Valores por defecto con claves correctas que JS espera
+    return ['pdf_path' => '../Pdf/', 'active_csv' => '0codigos.csv'];
 }
 
 function saveConfig($data) {
@@ -116,21 +117,22 @@ switch ($action) {
                 }
             }
         }
-        // Ensure config has correct keys for frontend
-        if (!isset($config['ruta_pdf'])) $config['ruta_pdf'] = $config['pdf_path'] ?? '../Pdf/';
-        if (!isset($config['ruta_csv'])) $config['ruta_csv'] = $config['active_csv'] ?? '../csv/Libro.csv';
+        sort($csv_files); // Ordenar alfabéticamente para consistencia
         
-        echo json_encode(['config' => $config, 'csv_files' => $csv_files, 'ruta_pdf' => $config['ruta_pdf'], 'ruta_csv' => $config['ruta_csv'], 'timeout_segundos' => $config['timeout_segundos'] ?? 10]);
+        // Asegurar que config tiene las claves correctas que JS espera
+        if (!isset($config['pdf_path'])) $config['pdf_path'] = '../Pdf/';
+        if (!isset($config['active_csv'])) $config['active_csv'] = isset($csv_files[0]) ? $csv_files[0] : '0codigos.csv';
+        
+        echo json_encode(['config' => $config, 'csv_files' => $csv_files]);
         break;
 
     case 'save_config':
         $new_config = [
-            'ruta_pdf' => $_POST['ruta_pdf'] ?? $_POST['pdf_path'],
-            'ruta_csv' => $_POST['ruta_csv'] ?? $_POST['active_csv'],
-            'timeout_segundos' => $_POST['timeout_segundos'] ?? 10
+            'pdf_path' => $_POST['pdf_path'] ?? '../Pdf/',
+            'active_csv' => $_POST['active_csv'] ?? '0codigos.csv'
         ];
         saveConfig($new_config);
-        echo json_encode(['status' => 'ok', 'success' => true, 'msg' => 'Configuración guardada']);
+        echo json_encode(['status' => 'ok', 'success' => true, 'msg' => 'Configuración guardada', 'config' => $new_config]);
         break;
 
     case 'get_data':

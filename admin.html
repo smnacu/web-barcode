@@ -221,8 +221,9 @@
             fetch(API, { method: 'POST', body: formData })
                 .then(r => r.json())
                 .then(data => {
+                    console.log('loadConfig recibió:', data);
                     // Llenar inputs
-                    document.getElementById('config-pdf-path').value = data.config.pdf_path;
+                    document.getElementById('config-pdf-path').value = data.config.pdf_path || '../Pdf/';
                     
                     // Llenar Selectores (El de Config Activa y el de Editor)
                     const selActive = document.getElementById('config-csv-active');
@@ -249,7 +250,7 @@
 
                     // Cargar datos en la tabla (del archivo seleccionado en el editor)
                     if(currentEditingFile === '') {
-                        currentEditingFile = data.config.active_csv;
+                        currentEditingFile = data.config.active_csv || data.csv_files[0];
                     }
                     loadData(); 
                 });
