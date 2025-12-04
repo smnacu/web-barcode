@@ -1,5 +1,5 @@
 /**
- * app.js - Scanner de códigos de barras EAN-13
+ * app.js - Scanner de codigos de barras
  * Con barra de estado visible y logging
  */
 
@@ -38,7 +38,7 @@ function addLog(message, type) {
 }
 
 // ============================================================================
-// CONFIGURACIÓN
+// CONFIGURACION
 // ============================================================================
 var html5QrcodeScanner = null;
 var isProcessing = false;
@@ -57,14 +57,14 @@ try {
 } catch (e) { }
 
 // ============================================================================
-// INICIALIZACIÓN
+// INICIALIZACION
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function () {
     setStatus('Iniciando...', 'scanning');
     loadHistory();
 
     if (typeof Html5Qrcode === 'undefined') {
-        setStatus('ERROR: Librería no cargada', 'error');
+        setStatus('ERROR: Libreria no cargada', 'error');
         return;
     }
 
@@ -78,11 +78,11 @@ document.addEventListener('DOMContentLoaded', function () {
 // ============================================================================
 function startScanner() {
     if (isCameraBusy) {
-        setStatus('Cámara ocupada...', 'scanning');
+        setStatus('Camara ocupada...', 'scanning');
         return;
     }
     isCameraBusy = true;
-    setStatus('Abriendo cámara...', 'scanning');
+    setStatus('Abriendo camara...', 'scanning');
 
     var cleanup = Promise.resolve();
     if (html5QrcodeScanner) {
@@ -94,7 +94,7 @@ function startScanner() {
     }).then(function () {
         var reader = document.getElementById('reader');
         if (!reader) {
-            setStatus('ERROR: No se encontró el visor', 'error');
+            setStatus('ERROR: No se encontro el visor', 'error');
             isCameraBusy = false;
             return Promise.reject('No reader');
         }
@@ -102,14 +102,16 @@ function startScanner() {
 
         html5QrcodeScanner = new Html5Qrcode("reader");
 
+        // Formatos: EAN-13, EAN-8, QR, UPC, CODE-128, CODE-39
         var config = {
             fps: 15,
-            qrbox: { width: 280, height: 60 },
+            qrbox: { width: 280, height: 80 },
             aspectRatio: 1.777,
             disableFlip: true,
             formatsToSupport: [
                 Html5QrcodeSupportedFormats.EAN_13,
                 Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.QR_CODE,
                 Html5QrcodeSupportedFormats.UPC_A,
                 Html5QrcodeSupportedFormats.UPC_E,
                 Html5QrcodeSupportedFormats.CODE_128,
@@ -123,17 +125,17 @@ function startScanner() {
             onScanSuccess,
             function () { }
         ).catch(function (err) {
-            addLog('Intento 1 falló: ' + err, 'error');
+            addLog('Intento 1 fallo: ' + err, 'error');
             return html5QrcodeScanner.start("environment", config, onScanSuccess, function () { });
         }).catch(function (err) {
-            addLog('Intento 2 falló: ' + err, 'error');
+            addLog('Intento 2 fallo: ' + err, 'error');
             return html5QrcodeScanner.start("user", config, onScanSuccess, function () { });
         });
     }).then(function () {
-        setStatus('Escaneando... apuntá el código', 'success');
+        setStatus('Escaneando... apunta el codigo', 'success');
         isCameraBusy = false;
     }).catch(function (err) {
-        setStatus('ERROR cámara: ' + (err.message || err), 'error');
+        setStatus('ERROR camara: ' + (err.message || err), 'error');
         isCameraBusy = false;
     });
 }
@@ -170,7 +172,7 @@ function stopCurrentScanner() {
 function switchCamera() {
     if (isCameraBusy) return;
     currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
-    setStatus('Cambiando cámara...', 'scanning');
+    setStatus('Cambiando camara...', 'scanning');
     startScanner();
 }
 
@@ -202,17 +204,17 @@ function onScanSuccess(decodedText, decodedResult) {
         }, 500);
     }
 
-    setStatus('Leído: ' + decodedText + ' - Buscando...', 'scanning');
+    setStatus('Leido: ' + decodedText + ' - Buscando...', 'scanning');
 
     fetch('api/buscar.php?codigo=' + encodeURIComponent(decodedText))
         .then(function (response) { return response.json(); })
         .then(function (data) {
             if (data.encontrado) {
                 var desc = data.producto ? data.producto.descripcion : 'Encontrado';
-                setStatus('✓ ' + desc, 'success');
+                setStatus('OK: ' + desc, 'success');
                 handleFound(data);
             } else {
-                setStatus('✗ No encontrado: ' + decodedText, 'error');
+                setStatus('NO ENCONTRADO: ' + decodedText, 'error');
                 handleNotFound(decodedText);
             }
         })
@@ -223,7 +225,7 @@ function onScanSuccess(decodedText, decodedResult) {
         .finally(function () {
             setTimeout(function () {
                 isProcessing = false;
-                setStatus('Escaneando... apuntá el código', 'success');
+                setStatus('Escaneando... apunta el codigo', 'success');
             }, SCAN_COOLDOWN_MS);
         });
 }
@@ -333,7 +335,7 @@ function escapeHtml(text) {
 }
 
 // ============================================================================
-// BÚSQUEDA MANUAL
+// BUSQUEDA MANUAL
 // ============================================================================
 var searchInput = document.getElementById('manual-search');
 var searchResults = document.getElementById('search-results');
@@ -364,7 +366,7 @@ function performManualSearch(query) {
     fetch('api/buscar.php', { method: 'POST', body: fd })
         .then(function (res) { return res.json(); })
         .then(function (data) { renderSearchResults(data); })
-        .catch(function (err) { addLog('Error búsqueda: ' + err, 'error'); });
+        .catch(function (err) { addLog('Error busqueda: ' + err, 'error'); });
 }
 
 function renderSearchResults(data) {
