@@ -499,4 +499,4 @@ document.addEventListener('DOMContentLoaded', function () {
 // ============================================================================
 function switchCamera() { Scanner.switchCamera(); }
 function clearHistory() { DataManager.clearHistory(); }
-function closeSearch() { UI.toggleSearch(false); }
+function closeSearch() { UI.toggleSearch(false); } 
