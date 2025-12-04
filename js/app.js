@@ -1,5 +1,5 @@
 /**
- * app.js - Scanner de códigos de barras
+ * app.js - Scanner de códigos de barras EAN-13
  * Optimizado para Android 11 de bajos recursos
  */
 
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Pequeño delay para asegurar que el DOM esté listo
     setTimeout(function () {
         startScanner();
-    }, 300);
+    }, 500);
 });
 
 // ============================================================================
@@ -54,29 +54,31 @@ function startScanner() {
     }
 
     cleanup.then(function () {
-        return new Promise(function (resolve) { setTimeout(resolve, 200); });
+        return new Promise(function (resolve) { setTimeout(resolve, 300); });
     }).then(function () {
         var reader = document.getElementById('reader');
         if (reader) reader.innerHTML = '';
 
         html5QrcodeScanner = new Html5Qrcode("reader");
 
-        // Config optimizada para Android bajo recursos
+        // Config OPTIMIZADA para EAN-13 (códigos de barras)
+        // qrbox ancho y bajo para capturar barras horizontales
         var config = {
-            fps: 5,
-            qrbox: { width: 180, height: 180 },
-            aspectRatio: 1.0,
-            disableFlip: false,
+            fps: 15,
+            qrbox: { width: 300, height: 80 },
+            aspectRatio: 1.777,
+            disableFlip: true,
             formatsToSupport: [
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.CODE_128,
                 Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39
             ]
         };
 
-        // IMPORTANTE: Solo pasar facingMode, no width/height
-        // La librería no acepta múltiples keys en el objeto
+        // IMPORTANTE: Solo pasar facingMode
         return html5QrcodeScanner.start(
             { facingMode: currentFacingMode },
             config,
@@ -84,7 +86,6 @@ function startScanner() {
             function () { }
         ).catch(function (err) {
             console.warn('Trying fallback with environment facing mode', err);
-            // Segundo intento: usar string directamente
             return html5QrcodeScanner.start(
                 "environment",
                 config,
@@ -93,7 +94,6 @@ function startScanner() {
             );
         }).catch(function (err) {
             console.warn('Trying fallback with user facing mode', err);
-            // Tercer intento: cámara frontal
             return html5QrcodeScanner.start(
                 "user",
                 config,
@@ -109,7 +109,6 @@ function startScanner() {
         isCameraBusy = false;
         if (errorMsg) {
             var msg = err.message || String(err);
-            // No mostrar error de transición (es temporal)
             if (msg.indexOf('transition') === -1) {
                 errorMsg.textContent = 'Cámara: ' + msg;
                 errorMsg.classList.add('visible');
@@ -165,8 +164,18 @@ function onScanSuccess(decodedText) {
     lastScannedEAN = decodedText;
     lastScanTime = now;
 
+    // Feedback visual y sonoro
     if (beep) try { beep.play(); } catch (e) { }
     showStatus(true);
+
+    // Flash verde en el scanner
+    var scannerContainer = document.querySelector('.scanner-container');
+    if (scannerContainer) {
+        scannerContainer.style.boxShadow = '0 0 30px #22c55e';
+        setTimeout(function () {
+            scannerContainer.style.boxShadow = '';
+        }, 500);
+    }
 
     fetch('api/buscar.php?codigo=' + encodeURIComponent(decodedText))
         .then(function (response) { return response.json(); })
@@ -201,7 +210,6 @@ function showStatus(processing) {
 function handleFound(data) {
     var fullUrl = data.pdf_url;
     if (!fullUrl && data.pdf) {
-        // Si es URL HTTP, usar directamente
         if (data.pdf.indexOf('http') === 0) {
             fullUrl = data.pdf;
         } else {
@@ -246,7 +254,6 @@ function addToHistory(ean, desc, url, success) {
     var list = document.getElementById('history-list');
     if (!list) return;
 
-    // Limpiar mensaje de vacío si existe
     var empty = list.querySelector('.empty-history');
     if (empty) empty.remove();
 
@@ -370,9 +377,6 @@ function renderSearchResults(data) {
     if (searchResults) searchResults.classList.add('visible');
 }
 
-// ============================================================================
-// NAVEGACIÓN A ADMIN
-// ============================================================================
 function goToAdmin() {
     window.location.href = 'admin.html';
 }

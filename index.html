@@ -8,9 +8,6 @@
     <title>Scanner ITDelivery</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        /* ============================================
-           RESET & VARIABLES
-           ============================================ */
         :root {
             --bg-body: #000;
             --bg-card: #0b0b0f;
@@ -43,9 +40,7 @@
             flex-direction: column;
         }
 
-        /* ============================================
-           HEADER
-           ============================================ */
+        /* HEADER */
         .app-header {
             display: flex;
             align-items: center;
@@ -103,12 +98,6 @@
             text-decoration: none;
         }
 
-        .settings-btn:hover,
-        .settings-btn:active {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-        }
-
         .pulse-dot {
             width: 8px;
             height: 8px;
@@ -129,20 +118,17 @@
             }
         }
 
-        /* ============================================
-           MAIN CONTENT
-           ============================================ */
+        /* MAIN CONTENT */
         .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             position: relative;
+            padding-bottom: 60px;
         }
 
-        /* ============================================
-           SEARCH BAR
-           ============================================ */
+        /* SEARCH BAR */
         .search-container {
             position: absolute;
             top: 12px;
@@ -198,7 +184,6 @@
             cursor: pointer;
         }
 
-        .result-item:hover,
         .result-item:active {
             background: rgba(255, 255, 255, 0.05);
         }
@@ -228,26 +213,27 @@
             cursor: pointer;
         }
 
-        /* ============================================
-           SCANNER
-           ============================================ */
+        /* SCANNER - Optimizado para EAN-13 */
         .scanner-wrapper {
             flex: 1;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 60px 16px 16px;
+            padding: 60px 12px 12px;
         }
 
         .scanner-container {
             position: relative;
             width: 100%;
-            max-width: 350px;
-            aspect-ratio: 1;
+            max-width: 95vw;
+            height: 32vh;
+            min-height: 160px;
+            max-height: 240px;
             background: #000;
             border-radius: 16px;
             overflow: hidden;
             border: 1px solid #333;
+            transition: box-shadow 0.3s;
         }
 
         #reader {
@@ -261,7 +247,7 @@
             height: 100% !important;
         }
 
-        /* Scanner visual guide */
+        /* LÍNEA ROJA de escaneo - estilo lector de supermercado */
         .scanner-guide {
             position: absolute;
             inset: 0;
@@ -271,54 +257,35 @@
             justify-content: center;
         }
 
-        .guide-box {
-            width: 65%;
-            aspect-ratio: 1;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            position: relative;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+        .scan-line {
+            width: 85%;
+            height: 3px;
+            background: linear-gradient(90deg,
+                    transparent 0%,
+                    var(--brand-red) 15%,
+                    #ff4444 50%,
+                    var(--brand-red) 85%,
+                    transparent 100%);
+            box-shadow:
+                0 0 8px var(--brand-red),
+                0 0 16px var(--brand-red),
+                0 0 24px rgba(220, 38, 38, 0.4);
+            animation: scanPulse 1.5s ease-in-out infinite;
+            border-radius: 2px;
         }
 
-        .guide-corner {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border-color: var(--brand-red);
-            border-style: solid;
-            border-width: 0;
-        }
+        @keyframes scanPulse {
 
-        .guide-corner.tl {
-            top: -2px;
-            left: -2px;
-            border-top-width: 4px;
-            border-left-width: 4px;
-            border-radius: 8px 0 0 0;
-        }
+            0%,
+            100% {
+                opacity: 0.6;
+                transform: scaleX(0.95);
+            }
 
-        .guide-corner.tr {
-            top: -2px;
-            right: -2px;
-            border-top-width: 4px;
-            border-right-width: 4px;
-            border-radius: 0 8px 0 0;
-        }
-
-        .guide-corner.bl {
-            bottom: -2px;
-            left: -2px;
-            border-bottom-width: 4px;
-            border-left-width: 4px;
-            border-radius: 0 0 0 8px;
-        }
-
-        .guide-corner.br {
-            bottom: -2px;
-            right: -2px;
-            border-bottom-width: 4px;
-            border-right-width: 4px;
-            border-radius: 0 0 8px 0;
+            50% {
+                opacity: 1;
+                transform: scaleX(1);
+            }
         }
 
         .switch-camera-btn {
@@ -359,34 +326,84 @@
             display: block;
         }
 
-        /* ============================================
-           HISTORY PANEL
-           ============================================ */
+        /* Texto de ayuda */
+        .scan-hint {
+            position: absolute;
+            bottom: 8px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* HISTORY PANEL - DESPLEGABLE */
         .history-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
             background: var(--bg-card);
-            border-top: 1px solid #222;
-            height: 28%;
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            border-radius: 16px 16px 0 0;
-            flex-shrink: 0;
+            border-top: 1px solid #333;
+            border-radius: 20px 20px 0 0;
+            transition: max-height 0.3s ease-out;
+            max-height: 56px;
+            overflow: hidden;
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .history-panel.expanded {
+            max-height: 55vh;
         }
 
         .history-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px 20px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+        }
+
+        .history-header::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
         }
 
         .history-title {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-title::after {
+            content: '▲';
+            font-size: 10px;
+            transition: transform 0.3s;
+        }
+
+        .history-panel.expanded .history-title::after {
+            transform: rotate(180deg);
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
         }
 
         .clear-history-btn {
@@ -400,9 +417,9 @@
         }
 
         #history-list {
-            flex: 1;
+            max-height: calc(55vh - 60px);
             overflow-y: auto;
-            padding: 8px 12px;
+            padding: 8px 16px 20px;
         }
 
         .history-item {
@@ -414,8 +431,6 @@
             border-radius: 8px;
             padding: 10px 12px;
             margin-bottom: 8px;
-            position: relative;
-            overflow: hidden;
         }
 
         .history-item.success {
@@ -459,10 +474,6 @@
             flex-shrink: 0;
         }
 
-        .open-pdf-btn:active {
-            background: #1d4ed8;
-        }
-
         .empty-history {
             text-align: center;
             color: var(--text-muted);
@@ -470,14 +481,10 @@
             padding: 20px;
         }
 
-        /* ============================================
-           UTILITIES
-           ============================================ */
         .hidden {
             display: none !important;
         }
 
-        /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -494,7 +501,6 @@
 </head>
 
 <body>
-
     <!-- Header -->
     <header class="app-header">
         <div class="header-left">
@@ -511,13 +517,11 @@
 
     <!-- Main Content -->
     <div class="main-content">
-
         <!-- Search Bar -->
         <div class="search-container">
             <input type="text" id="manual-search" class="search-input" placeholder="Buscar código, EAN o descripción..."
                 autocomplete="off">
             <span class="search-icon">🔍</span>
-
             <div id="search-results">
                 <div id="results-list"></div>
                 <button class="close-search-btn" onclick="closeSearch()">Cerrar</button>
@@ -529,34 +533,31 @@
             <div class="scanner-container">
                 <div id="reader"></div>
 
-                <!-- Visual Guide -->
+                <!-- LÍNEA ROJA de escaneo -->
                 <div class="scanner-guide">
-                    <div class="guide-box">
-                        <div class="guide-corner tl"></div>
-                        <div class="guide-corner tr"></div>
-                        <div class="guide-corner bl"></div>
-                        <div class="guide-corner br"></div>
-                    </div>
+                    <div class="scan-line"></div>
                 </div>
 
                 <!-- Switch Camera Button -->
                 <button class="switch-camera-btn" onclick="switchCamera()">🔄</button>
 
                 <div id="error-msg"></div>
+                <div class="scan-hint">Apuntá el código de barras a la línea roja</div>
             </div>
         </div>
+    </div>
 
-        <!-- History Panel -->
-        <div class="history-panel">
-            <div class="history-header">
-                <span class="history-title">Historial Reciente</span>
-                <button class="clear-history-btn" onclick="clearHistory()">BORRAR</button>
-            </div>
-            <div id="history-list">
-                <div class="empty-history">Sin escaneos recientes</div>
+    <!-- History Panel - Desplegable -->
+    <div class="history-panel" id="history-panel">
+        <div class="history-header" onclick="toggleHistory()">
+            <span class="history-title">Historial Reciente</span>
+            <div class="history-actions">
+                <button class="clear-history-btn" onclick="event.stopPropagation(); clearHistory()">BORRAR</button>
             </div>
         </div>
-
+        <div id="history-list">
+            <div class="empty-history">Sin escaneos recientes</div>
+        </div>
     </div>
 
     <script src="js/libs/html5-qrcode.min.js"></script>
@@ -564,6 +565,13 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./js/sw.js').catch(function () { });
+        }
+
+        function toggleHistory() {
+            var panel = document.getElementById('history-panel');
+            if (panel) {
+                panel.classList.toggle('expanded');
+            }
         }
     </script>
 </body>
