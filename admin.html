@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Admin - Scanner ITDelivery</title>
-    <link rel="stylesheet" href="css/styles.css">
     <style>
-        /* Variables */
         :root {
+            --bg-body: #050507;
             --bg-card: #0b0b0f;
             --bg-input: #111217;
             --text-main: #e6eef6;
@@ -19,188 +19,84 @@
             --success: #22c55e;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #050507;
-            color: var(--text-main);
+        body.light-mode {
+            --bg-body: #f5f5f5;
+            --bg-card: #ffffff;
+            --bg-input: #f0f0f0;
+            --text-main: #1a1a1a;
+            --text-muted: #666666;
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
-        /* Admin Container */
-        .admin-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .toolbar {
-            background: var(--bg-card);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            border: 1px solid #333;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-body);
             color: var(--text-main);
         }
 
-        .data-table th,
-        .data-table td {
-            border: 1px solid #444;
-            padding: 8px;
-            text-align: left;
-        }
-
-        .data-table th {
-            background-color: #000;
-            color: white;
-            border-bottom: 2px solid var(--brand-red);
-            position: sticky;
-            top: 0;
-        }
-
-        .data-table tr:nth-child(even) {
-            background-color: #1a1a1a;
-        }
-
-        .data-table tr:hover {
-            background-color: #252525;
-        }
-
-        .data-table td[contenteditable="true"] {
-            background: #333;
-            cursor: pointer;
-        }
-
-        .input-group {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .input-group label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-            color: var(--text-muted);
-        }
-
-        .input-group input,
-        .input-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #444;
-            border-radius: 4px;
-            background: var(--bg-input);
-            color: var(--text-main);
-        }
-
-        /* Login Overlay - inicialmente visible */
-        #login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.98);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #login-overlay.hidden {
-            display: none;
-        }
-
-        .login-box {
-            background: var(--bg-card);
-            padding: 30px;
-            border-radius: 8px;
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-            border: 1px solid #333;
-        }
-
-        .login-box input {
-            width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            font-size: 16px;
-            background: var(--bg-input);
-            color: white;
-            border: 1px solid #444;
-            border-radius: 4px;
-        }
-
-        /* Admin content - inicialmente oculto */
-        #admin-content {
-            display: none;
-        }
-
-        #admin-content.visible {
-            display: block;
-        }
-
-        /* Header */
+        /* HEADER */
         .app-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
-            padding: 16px 20px;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
-            border-bottom: 1px solid #131316;
-            margin-bottom: 12px;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
-        .header-left img {
-            height: 44px;
-            filter: brightness(0) invert(1);
+        .header-logo {
+            height: 36px;
+        }
+
+        body:not(.light-mode) .header-logo {
+            filter: invert(1);
+        }
+
+        .theme-switch {
+            width: 32px;
+            height: 32px;
+            background: rgba(128, 128, 128, 0.2);
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .header-info {
+            display: flex;
+            flex-direction: column;
         }
 
         .header-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
         }
 
         .header-right {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
 
-        #admin-log {
-            background: #071018;
-            color: var(--text-muted);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            border: 1px solid #12202a;
-            min-width: 200px;
-            max-width: 420px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Buttons */
+        /* BUTTONS */
         .btn {
             border: none;
             border-radius: 6px;
@@ -208,7 +104,11 @@
             font-weight: 600;
             cursor: pointer;
             color: white;
-            font-size: 14px;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn-primary {
@@ -232,15 +132,78 @@
         }
 
         .btn-sm {
-            padding: 6px 12px;
+            padding: 8px 12px;
             font-size: 12px;
         }
 
-        /* Table Container */
+        /* ADMIN LOG */
+        .admin-log {
+            background: rgba(128, 128, 128, 0.1);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* CONTAINER */
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        /* TOOLBAR */
+        .toolbar {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            border: 1px solid rgba(128, 128, 128, 0.2);
+        }
+
+        .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            border-radius: 6px;
+            background: var(--bg-input);
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--brand-red);
+        }
+
+        /* TABLE */
         .table-container {
             background: var(--bg-card);
-            border-radius: 12px;
-            border: 1px solid #333;
+            border-radius: 10px;
+            border: 1px solid rgba(128, 128, 128, 0.2);
             overflow: hidden;
         }
 
@@ -249,38 +212,155 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px 16px;
-            background: #0a0a0a;
-            border-bottom: 1px solid #333;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .table-header h3 {
             margin: 0;
             color: var(--text-muted);
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .table-scroll {
             overflow-x: auto;
-            max-height: 60vh;
+            max-height: 55vh;
             overflow-y: auto;
         }
 
-        /* Fila nueva destacada */
-        .new-row td {
-            background: rgba(34, 197, 94, 0.1) !important;
-            animation: highlightNew 2s ease-out;
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
         }
 
-        @keyframes highlightNew {
-            from {
-                background: rgba(34, 197, 94, 0.3);
-            }
-
-            to {
-                background: rgba(34, 197, 94, 0.1);
-            }
+        .data-table th,
+        .data-table td {
+            border: 1px solid rgba(128, 128, 128, 0.2);
+            padding: 10px 12px;
+            text-align: left;
         }
 
+        .data-table th {
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-muted);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .data-table tr:nth-child(even) {
+            background: rgba(128, 128, 128, 0.05);
+        }
+
+        .data-table tr:hover {
+            background: rgba(128, 128, 128, 0.1);
+        }
+
+        .data-table td[contenteditable="true"] {
+            cursor: text;
+        }
+
+        .data-table td[contenteditable="true"]:focus {
+            outline: 2px solid var(--brand-red);
+            background: var(--bg-input);
+        }
+
+        /* LOGIN */
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.98);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #login-overlay.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            width: 90%;
+            max-width: 360px;
+            border: 1px solid rgba(128, 128, 128, 0.2);
+        }
+
+        .login-box h2 {
+            margin-bottom: 8px;
+        }
+
+        .login-box p {
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 16px;
+            font-size: 16px;
+            background: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            border-radius: 8px;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: var(--brand-red);
+        }
+
+        .login-error {
+            color: var(--error);
+            margin-top: 10px;
+            display: none;
+            font-size: 13px;
+        }
+
+        .login-footer {
+            margin-top: 24px;
+        }
+
+        .login-footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ADMIN CONTENT */
+        #admin-content {
+            display: none;
+        }
+
+        #admin-content.visible {
+            display: block;
+        }
+
+        /* FOOTER */
+        .footer-credit {
+            text-align: center;
+            padding: 20px;
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        /* RESPONSIVE */
         @media (max-width: 768px) {
             .toolbar {
                 flex-direction: column;
@@ -290,88 +370,104 @@
                 min-width: 100%;
             }
 
-            #admin-log {
+            .admin-log {
                 display: none;
-            }
-
-            .header-right {
-                flex-wrap: wrap;
             }
 
             .table-header {
                 flex-direction: column;
-                gap: 10px;
+                align-items: stretch;
             }
+
+            .header-right {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(128, 128, 128, 0.3);
+            border-radius: 3px;
         }
     </style>
 </head>
 
 <body>
-
-    <!-- Login Overlay -->
+    <!-- LOGIN OVERLAY -->
     <div id="login-overlay">
         <div class="login-box">
-            <img src="img/logo_bw.png" alt="Logo" style="height: 50px; margin-bottom: 20px; filter: invert(1);">
-            <h2>Acceso Restringido</h2>
-            <p style="color: var(--text-muted)">Ingrese la clave de administrador</p>
-            <input type="password" id="admin-pass" placeholder="Contraseña">
+            <img src="img/logo_bw.png" alt="Logo" class="header-logo" style="height: 50px; margin-bottom: 16px;">
+            <h2>Acceso Admin</h2>
+            <p>Ingrese la clave de administrador</p>
+            <input type="password" id="admin-pass" placeholder="Contrasena" autocomplete="current-password">
             <button onclick="doLogin()" class="btn btn-primary" style="width:100%">Entrar</button>
-            <p id="login-error" style="color: var(--error); margin-top: 10px; display: none;">Clave incorrecta</p>
-            <a href="index.html" style="display:block; margin-top: 20px; color: var(--text-muted);">Volver al
-                Scanner</a>
+            <p id="login-error" class="login-error">Clave incorrecta</p>
+            <div class="login-footer">
+                <a href="index.html">← Volver al Scanner</a>
+                <p style="margin-top: 24px; font-size: 10px; opacity: 0.5;">Daruma Consulting SRL</p>
+            </div>
         </div>
     </div>
 
-    <!-- Admin Content -->
+    <!-- ADMIN CONTENT -->
     <div id="admin-content">
         <header class="app-header">
             <div class="header-left">
-                <img src="img/logo_bw.png" alt="Logo">
-                <div>
-                    <div class="header-title">Panel ITDelivery - Administración</div>
-                    <div style="font-size:12px; color:var(--text-muted)">Gestión CSV & Configuración</div>
+                <img src="img/logo_bw.png" alt="Logo" class="header-logo">
+                <button class="theme-switch" onclick="toggleTheme()" title="Cambiar tema">🌓</button>
+                <div class="header-info">
+                    <span class="header-title">Panel Admin</span>
+                    <span class="header-subtitle">Gestion de CSV y Configuracion</span>
                 </div>
-                <div id="admin-log">Sin eventos</div>
             </div>
+            <div class="admin-log" id="admin-log">Sin eventos</div>
             <div class="header-right">
                 <button onclick="doLogout()" class="btn btn-secondary btn-sm">Salir</button>
-                <a href="index.html" class="btn btn-secondary btn-sm">Ir a Scanner</a>
+                <a href="index.html" class="btn btn-secondary btn-sm">Scanner</a>
             </div>
         </header>
 
         <div class="admin-container">
-
-            <!-- Configuración General -->
+            <!-- CONFIGURACION -->
             <section class="toolbar">
                 <div class="input-group">
-                    <label>📂 Ruta PDFs (Server/Intranet)</label>
+                    <label>📂 Ruta PDFs (Servidor)</label>
                     <input type="text" id="config-pdf-path" placeholder="http://192.168.170.160/PDF-EXPGRIFERIA/">
                 </div>
                 <div class="input-group">
                     <label>📄 Base de Datos Activa (CSV)</label>
-                    <select id="config-csv-active" onchange="highlightChange()"></select>
+                    <select id="config-csv-active"></select>
                 </div>
                 <div style="flex: 0 0 auto;">
-                    <button onclick="saveConfiguration()" class="btn btn-primary">💾 Guardar Configuración</button>
+                    <button onclick="saveConfiguration()" class="btn btn-primary">💾 Guardar Config</button>
                 </div>
             </section>
 
-            <!-- Subida de Archivos (MOVIDO ARRIBA) -->
+            <!-- SUBIR CSV -->
             <section class="toolbar">
                 <div class="input-group">
-                    <label>📤 Subir Nuevo CSV al Server</label>
-                    <input type="file" id="csv-upload" accept=".csv"
-                        style="background: var(--bg-input); color: var(--text-main);">
+                    <label>📤 Subir Nuevo CSV</label>
+                    <input type="file" id="csv-upload" accept=".csv">
                 </div>
                 <div style="flex: 0 0 auto;">
                     <button onclick="uploadCSV()" class="btn btn-secondary">Subir</button>
                 </div>
             </section>
 
-            <!-- Editor de CSV -->
+            <!-- EDITOR CSV -->
             <section class="toolbar">
                 <div class="input-group">
-                    <label>✏️ Editar Archivo:</label>
+                    <label>✏️ Editar Archivo CSV</label>
                     <select id="editor-csv-select" onchange="loadData()"></select>
                 </div>
                 <div style="flex: 0 0 auto;">
@@ -379,11 +475,11 @@
                 </div>
             </section>
 
-            <!-- Tabla con botón agregar integrado -->
+            <!-- TABLA -->
             <div class="table-container">
                 <div class="table-header">
-                    <h3 id="table-title">Datos del archivo: ...</h3>
-                    <button onclick="addRow()" class="btn btn-success">➕ Agregar Fila</button>
+                    <h3 id="table-title">Datos del archivo</h3>
+                    <button onclick="addRow()" class="btn btn-success btn-sm">➕ Agregar Fila</button>
                 </div>
                 <div class="table-scroll">
                     <table class="data-table" id="csv-table">
@@ -392,6 +488,8 @@
                     </table>
                 </div>
             </div>
+
+            <div class="footer-credit">Daruma Consulting SRL</div>
         </div>
     </div>
 
@@ -399,6 +497,21 @@
         var API = 'api/admin.php';
         var currentEditingFile = '';
 
+        // =====================================================================
+        // TEMA
+        // =====================================================================
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+        }
+
+        // =====================================================================
+        // INICIALIZACION
+        // =====================================================================
         document.addEventListener('DOMContentLoaded', function () {
             checkAuth();
             document.getElementById('admin-pass').addEventListener('keypress', function (e) {
@@ -406,16 +519,16 @@
             });
         });
 
-        // Auth
+        // =====================================================================
+        // AUTENTICACION
+        // =====================================================================
         function checkAuth() {
             fetch(API + '?action=check_auth')
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.auth) showAdmin();
                 })
-                .catch(function () {
-                    // Si hay error, mantener login visible
-                });
+                .catch(function () { });
         }
 
         function doLogin() {
@@ -446,18 +559,20 @@
             document.getElementById('login-overlay').classList.add('hidden');
             document.getElementById('admin-content').classList.add('visible');
             loadConfig();
-            appendAdminLog('Usuario autenticado');
+            logEvent('Usuario autenticado');
         }
 
-        function appendAdminLog(msg) {
+        function logEvent(msg) {
             var el = document.getElementById('admin-log');
             if (el) {
                 var now = new Date().toLocaleTimeString();
-                el.innerText = now + ' — ' + msg;
+                el.textContent = now + ' - ' + msg;
             }
         }
 
-        // Config
+        // =====================================================================
+        // CONFIGURACION
+        // =====================================================================
         function loadConfig() {
             var fd = new FormData();
             fd.append('action', 'get_config');
@@ -475,13 +590,13 @@
                     data.csv_files.forEach(function (f) {
                         var opt1 = document.createElement('option');
                         opt1.value = f;
-                        opt1.innerText = f;
+                        opt1.textContent = f;
                         if (f === data.config.active_csv) opt1.selected = true;
                         selActive.appendChild(opt1);
 
                         var opt2 = document.createElement('option');
                         opt2.value = f;
-                        opt2.innerText = f;
+                        opt2.textContent = f;
                         if (f === data.config.active_csv && currentEditingFile === '') opt2.selected = true;
                         selEditor.appendChild(opt2);
                     });
@@ -503,15 +618,18 @@
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (d.status === 'ok') {
-                        alert('Configuración guardada correctamente.');
-                        appendAdminLog('Configuración guardada');
+                        alert('Configuracion guardada');
+                        logEvent('Config guardada');
                     }
                 });
         }
 
+        // =====================================================================
+        // DATOS CSV
+        // =====================================================================
         function loadData() {
             currentEditingFile = document.getElementById('editor-csv-select').value;
-            document.getElementById('table-title').innerText = 'Editando: ' + currentEditingFile;
+            document.getElementById('table-title').textContent = 'Editando: ' + currentEditingFile;
 
             var fd = new FormData();
             fd.append('action', 'get_data');
@@ -522,17 +640,12 @@
                 .then(function (res) { renderTable(res.data); });
         }
 
-        function highlightChange() {
-            document.getElementById('config-csv-active').style.border = '2px solid var(--warning)';
-        }
-
-        // Table
         function renderTable(rows) {
             var table = document.getElementById('csv-table');
             table.innerHTML = '';
 
             if (!rows || rows.length === 0) {
-                table.innerHTML = '<tbody><tr><td>Archivo vacío o no encontrado</td></tr></tbody>';
+                table.innerHTML = '<tbody><tr><td style="padding:20px;text-align:center;color:var(--text-muted)">Archivo vacio o no encontrado</td></tr></tbody>';
                 return;
             }
 
@@ -544,11 +657,12 @@
 
             headerRow.forEach(function (cell, i) {
                 var th = document.createElement('th');
-                th.innerText = cell || 'Columna ' + i;
+                th.textContent = cell || 'Col ' + i;
                 trHead.appendChild(th);
             });
+
             var thAct = document.createElement('th');
-            thAct.innerText = 'Acciones';
+            thAct.textContent = 'Acciones';
             thAct.style.width = '80px';
             trHead.appendChild(thAct);
             thead.appendChild(trHead);
@@ -561,9 +675,9 @@
 
                 row.forEach(function (cell, cellIndex) {
                     var td = document.createElement('td');
-                    td.innerText = cell;
+                    td.textContent = cell;
                     td.contentEditable = true;
-                    td.onblur = function () { saveCell(realIndex, cellIndex, td.innerText, row); };
+                    td.onblur = function () { saveCell(realIndex, cellIndex, td.textContent, row); };
                     tr.appendChild(td);
                 });
 
@@ -573,6 +687,7 @@
                 btnDel.innerHTML = '🗑️';
                 btnDel.className = 'btn btn-sm';
                 btnDel.style.background = 'var(--error)';
+                btnDel.style.padding = '6px 10px';
                 btnDel.onclick = function () { deleteRow(realIndex); };
                 tdAct.appendChild(btnDel);
                 tr.appendChild(tdAct);
@@ -590,7 +705,7 @@
             fd.append('index', rowIndex);
             originalRow.forEach(function (val, i) { fd.append('row_data[' + i + ']', val); });
             fetch(API, { method: 'POST', body: fd }).then(function () {
-                appendAdminLog('Celda guardada');
+                logEvent('Celda guardada');
             });
         }
 
@@ -601,32 +716,31 @@
                 alert('Primero cargue un archivo CSV');
                 return;
             }
-            var cols = headerCells.children.length - 1; // -1 por acciones
+            var cols = headerCells.children.length - 1;
             var emptyRow = [];
             for (var i = 0; i < cols; i++) emptyRow.push('...');
 
             var fd = new FormData();
-            fd.append('action', 'add_row_top'); // Agrega al principio
+            fd.append('action', 'add_row_top');
             fd.append('target_csv', currentEditingFile);
             emptyRow.forEach(function (val, i) { fd.append('row_data[' + i + ']', val); });
 
             fetch(API, { method: 'POST', body: fd }).then(function () {
-                appendAdminLog('Fila agregada al principio');
+                logEvent('Fila agregada');
                 loadData();
-                // Scroll al principio de la tabla
                 var tableScroll = document.querySelector('.table-scroll');
                 if (tableScroll) tableScroll.scrollTop = 0;
             });
         }
 
         function deleteRow(index) {
-            if (!confirm('¿Borrar fila?')) return;
+            if (!confirm('Eliminar esta fila?')) return;
             var fd = new FormData();
             fd.append('action', 'delete_row');
             fd.append('target_csv', currentEditingFile);
             fd.append('index', index);
             fetch(API, { method: 'POST', body: fd }).then(function () {
-                appendAdminLog('Fila eliminada');
+                logEvent('Fila eliminada');
                 loadData();
             });
         }
@@ -647,7 +761,7 @@
                 .then(function (d) {
                     if (d.status === 'ok') {
                         alert('Archivo subido: ' + d.filename);
-                        appendAdminLog('CSV subido: ' + d.filename);
+                        logEvent('CSV subido: ' + d.filename);
                         loadConfig();
                         fileInput.value = '';
                     } else {
