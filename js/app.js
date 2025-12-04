@@ -211,19 +211,29 @@ async function startScanner() {
             startScreen.classList.add('hidden');
             scannerContainer.classList.remove('hidden');
 
-            // Asegurar que el elemento está limpio y usar ID único para evitar bloqueos
-            // Buscamos por clase porque el ID cambia dinámicamente
-            const readerContainer = document.querySelector('.scanner-video-container') || document.getElementById('reader');
+            // -------------------------------------------------------------------
+            // RECREACIÓN DEL DOM (Fix para "Cannot transition")
+            // -------------------------------------------------------------------
+            // En lugar de reutilizar el div, lo destruimos y creamos uno nuevo
+            // para asegurar que la librería no encuentre rastros del anterior.
 
-            if (readerContainer) {
-                readerContainer.innerHTML = '';
-                const newId = `reader-${Date.now()}`;
-                readerContainer.id = newId;
-
-                html5QrcodeScanner = new Html5Qrcode(newId);
-            } else {
-                throw new Error("No se encontró el contenedor del scanner");
+            // 1. Buscar y eliminar el contenedor de video anterior
+            const oldContainer = scannerContainer.querySelector('.scanner-video-container');
+            if (oldContainer) {
+                oldContainer.remove();
             }
+
+            // 2. Crear nuevo contenedor limpio
+            const newId = `reader-${Date.now()}`;
+            const newDiv = document.createElement('div');
+            newDiv.id = newId;
+            newDiv.className = "w-full h-full scanner-video-container";
+
+            // 3. Insertarlo al principio del contenedor padre (detrás de los overlays)
+            scannerContainer.insertBefore(newDiv, scannerContainer.firstChild);
+
+            // 4. Inicializar librería con el nuevo ID
+            html5QrcodeScanner = new Html5Qrcode(newId);
 
             const config = {
                 fps: 15,
