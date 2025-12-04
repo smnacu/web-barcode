@@ -1,6 +1,6 @@
 /**
  * app.js - Scanner de codigos de barras
- * Con vibracion, beep, barra de estado y logging
+ * Con vibracion, beep, barra de estado y manejo de PDF "acto de fe"
  */
 
 // ============================================================================
@@ -47,13 +47,13 @@ var currentFacingMode = "environment";
 var lastScannedEAN = null;
 var lastScanTime = 0;
 
-// Reducido de 3000 a 2000 para flujo mas rapido
+// Cooldown reducido para flujo mas rapido
 var SCAN_COOLDOWN_MS = 2000;
 var STORAGE_KEY = 'barcodeC_history';
 var MAX_HISTORY_ITEMS = 30;
 
 // ============================================================================
-// AUDIO - Beep funcional
+// AUDIO - Beep funcional con Web Audio API
 // ============================================================================
 var audioContext = null;
 
@@ -151,7 +151,6 @@ function startScanner() {
 
         html5QrcodeScanner = new Html5Qrcode("reader");
 
-        // Formatos: EAN-13, EAN-8, QR, UPC, CODE-128, CODE-39
         var config = {
             fps: 15,
             qrbox: { width: 280, height: 80 },
@@ -225,12 +224,16 @@ function switchCamera() {
     startScanner();
 }
 
+// ============================================================================
+// ESCANEO EXITOSO
+// ============================================================================
 function onScanSuccess(decodedText, decodedResult) {
     var now = Date.now();
     var formatName = decodedResult.result.format ? decodedResult.result.format.formatName : 'UNKNOWN';
 
     addLog('DETECTADO: ' + decodedText + ' (' + formatName + ')', 'scan');
 
+    // Evitar escaneos repetidos
     if (decodedText === lastScannedEAN && (now - lastScanTime) < SCAN_COOLDOWN_MS) {
         return;
     }
@@ -257,26 +260,28 @@ function onScanSuccess(decodedText, decodedResult) {
 
     setStatus('Buscando: ' + decodedText + '...', 'scanning');
 
+    // Buscar en CSV
     fetch('api/buscar.php?codigo=' + encodeURIComponent(decodedText))
         .then(function (response) { return response.json(); })
         .then(function (data) {
             if (data.encontrado) {
                 var desc = data.producto ? data.producto.descripcion : 'Encontrado';
                 setStatus('OK: ' + desc, 'success');
-                vibrate([100, 50, 100]); // Patron de exito
+                vibrate([100, 50, 100]);
                 handleFound(data);
             } else {
-                setStatus('NO ENCONTRADO: ' + decodedText, 'error');
-                vibrate([50, 100, 50, 100, 50]); // Patron de error
+                setStatus('NO EN CSV: ' + decodedText, 'error');
+                vibrate([50, 100, 50, 100, 50]);
                 handleNotFound(decodedText);
             }
         })
         .catch(function (error) {
-            setStatus('ERROR: ' + error.message, 'error');
-            vibrate([300]); // Vibracion larga = error
-            addToHistory(decodedText, 'Error: ' + error.message, null, false);
+            setStatus('ERROR RED: ' + error.message, 'error');
+            vibrate([300]);
+            addToHistory(decodedText, 'Error de conexion', null, false);
         })
         .finally(function () {
+            // Siempre volver a estado listo despues del cooldown
             setTimeout(function () {
                 isProcessing = false;
                 setStatus('Listo - Apunta el codigo', 'success');
@@ -284,7 +289,11 @@ function onScanSuccess(decodedText, decodedResult) {
         });
 }
 
+// ============================================================================
+// MANEJO DE RESULTADOS - "Acto de Fe" para PDFs en LAN
+// ============================================================================
 function handleFound(data) {
+    // Construir URL del PDF
     var fullUrl = data.pdf_url;
     if (!fullUrl && data.pdf) {
         if (data.pdf.indexOf('http') === 0) {
@@ -297,15 +306,26 @@ function handleFound(data) {
     var title = (data.producto && data.producto.descripcion) ? data.producto.descripcion : 'Encontrado';
     var code = (data.producto && (data.producto.ean || data.producto.codigo)) || '';
 
+    // Agregar al historial como exito (lo encontramos en CSV)
     addToHistory(code, title, fullUrl, true);
 
+    // Abrir PDF en nueva pestana - "ACTO DE FE"
+    // El PDF esta en un servidor LAN al que Ferozo no puede acceder
+    // Simplemente abrimos la URL y confiamos en que el navegador local pueda llegar
     if (fullUrl) {
+        setStatus('Abriendo plano...', 'success');
+        addLog('PDF: ' + fullUrl, 'info');
+
+        // Abrir en nueva pestana, no bloqueamos ni esperamos respuesta
         window.open(fullUrl, '_blank');
+    } else {
+        setStatus('Sin plano: ' + code, 'warning');
+        addLog('Producto sin PDF asociado', 'warning');
     }
 }
 
 function handleNotFound(code) {
-    addToHistory(code, 'No encontrado', null, false);
+    addToHistory(code, 'No encontrado en CSV', null, false);
 }
 
 // ============================================================================
