@@ -44,21 +44,28 @@ async function startScanner() {
         if (reader) reader.innerHTML = '';
 
         html5QrcodeScanner = new Html5Qrcode("reader");
+
+        // Configuración optimizada para rendimiento
         const config = {
-            fps: 15,
-            qrbox: { width: 250, height: 150 },
+            fps: 10, // Reducido para mejorar rendimiento
+            qrbox: { width: 200, height: 200 }, // Caja más pequeña
             aspectRatio: 1.0,
             disableFlip: false,
             formatsToSupport: [
                 Html5QrcodeSupportedFormats.QR_CODE,
                 Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8
+                Html5QrcodeSupportedFormats.EAN_13
             ]
         };
 
+        const constraints = {
+            facingMode: currentFacingMode,
+            width: { ideal: 640 }, // Limitar resolución
+            height: { ideal: 480 }
+        };
+
         try {
-            await html5QrcodeScanner.start({ facingMode: currentFacingMode }, config, onScanSuccess, () => { });
+            await html5QrcodeScanner.start(constraints, config, onScanSuccess, () => { });
         } catch (err) {
             console.warn('Fallback video mode');
             await html5QrcodeScanner.start({ video: true }, config, onScanSuccess, () => { });

@@ -134,68 +134,24 @@
             <div id="search-results" class="hidden">
                 <div id="results-list" class="flex flex-col"></div>
                 <div class="p-2 border-t border-gray-800 text-center">
-                    <button onclick="closeSearch()"
-                        class="text-xs text-red-400 font-bold uppercase tracking-wider py-2 w-full">Cerrar</button>
+                    <div class="w-10 h-1 bg-gray-700 rounded-full"></div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Scanner View -->
-        <div id="scanner-container" class="relative w-full h-full">
-            <div id="reader" class="w-full h-full scanner-video-container"></div>
-
-            <!-- Visual Guide -->
-            <div class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                <div
-                    class="w-[75%] aspect-[3/2] border-2 border-white/20 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]">
-                    <div
-                        class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-red-500 -mt-1 -ml-1 rounded-tl-lg">
-                    </div>
-                    <div
-                        class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-red-500 -mt-1 -mr-1 rounded-tr-lg">
-                    </div>
-                    <div
-                        class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-red-500 -mb-1 -ml-1 rounded-bl-lg">
-                    </div>
-                    <div
-                        class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-red-500 -mb-1 -mr-1 rounded-br-lg">
-                    </div>
+                <div class="px-4 py-2 flex justify-between items-center border-b border-gray-800/50">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Historial Reciente</h3>
+                    <button onclick="clearHistory()" class="text-[10px] text-red-400 hover:text-red-300">BORRAR</button>
                 </div>
+                <div id="history-list" class="flex-grow overflow-y-auto p-3 space-y-2 scrollbar-hide"></div>
             </div>
 
-            <!-- Controls -->
-            <button onclick="switchCamera()"
-                class="absolute bottom-8 left-8 z-20 bg-gray-900/60 backdrop-blur p-3 rounded-full border border-white/10 active:scale-90 transition-all">
-                <i class="ph-bold ph-arrows-clockwise text-xl text-white"></i>
-            </button>
-
-            <div id="error-msg"
-                class="absolute bottom-20 left-0 right-0 text-center text-red-500 text-xs font-mono bg-black/80 py-1 hidden">
-            </div>
         </div>
 
-        <!-- History Panel (Bottom Sheet) -->
-        <div
-            class="bg-[#0b0b0f] border-t border-gray-800 h-[30%] flex flex-col shrink-0 z-20 rounded-t-2xl shadow-[0_-5px_30px_rgba(0,0,0,0.5)]">
-            <div class="w-full flex justify-center pt-3 pb-1">
-                <div class="w-10 h-1 bg-gray-700 rounded-full"></div>
-            </div>
-            <div class="px-4 py-2 flex justify-between items-center border-b border-gray-800/50">
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Historial Reciente</h3>
-                <button onclick="clearHistory()" class="text-[10px] text-red-400 hover:text-red-300">BORRAR</button>
-            </div>
-            <div id="history-list" class="flex-grow overflow-y-auto p-3 space-y-2 scrollbar-hide"></div>
-        </div>
-
-    </div>
-
-    <script src="js/libs/html5-qrcode.min.js"></script>
-    <script src="js/app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./js/sw.js').catch(() => { });
-        }
-    </script>
+        <script src="js/libs/html5-qrcode.min.js"></script>
+        <script src="js/app.js"></script>
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./js/sw.js').catch(() => { });
+            }
+        </script>
 </body>
 
 </html>
