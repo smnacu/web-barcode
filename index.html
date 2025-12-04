@@ -72,6 +72,12 @@
             font-size: 1rem;
         }
 
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
         #scan-status {
             display: none;
         }
@@ -80,6 +86,27 @@
             display: flex;
             align-items: center;
             gap: 4px;
+        }
+
+        .settings-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .settings-btn:hover,
+        .settings-btn:active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
         }
 
         .pulse-dot {
@@ -474,8 +501,11 @@
             <img src="img/logo_bw.png" alt="Logo">
             <span class="header-title">Scanner</span>
         </div>
-        <div id="scan-status">
-            <span class="pulse-dot"></span>
+        <div class="header-right">
+            <div id="scan-status">
+                <span class="pulse-dot"></span>
+            </div>
+            <a href="admin.html" class="settings-btn" title="Configuración">⚙️</a>
         </div>
     </header>
 

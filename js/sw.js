@@ -1,127 +1,94 @@
-// ============================================================================
-// SERVICE WORKER - Soporte offline y caché de PWA
-// ============================================================================
+/**
+ * Service Worker - Caché básico para PWA
+ * Versión simplificada para compatibilidad Android 11
+ */
 
-const CACHE_NAME = 'barcodeC-v1';
-const RUNTIME_CACHE = 'barcodeC-runtime-v1';
+var CACHE_NAME = 'barcodeC-v2';
 
-// URLs esenciales a cachear en instalación
-const urlsToCache = [
+// Solo archivos esenciales que existen
+var urlsToCache = [
     './',
-    '../index.html',
-    '../manifest.json',
-    '../css/styles.css',
-    '../js/app.js',
-    '../js/libs/html5-qrcode.min.js',
-    '../js/libs/pdf.min.js',
-    '../js/libs/pdf.worker.min.js'
+    './index.html',
+    './admin.html',
+    './manifest.json',
+    './css/styles.css',
+    './app.js',
+    './libs/html5-qrcode.min.js',
+    '../img/logo_bw.png'
 ];
 
-// ============================================================================
-// EVENTO: INSTALL
-// ============================================================================
-
-self.addEventListener('install', (event) => {
-    console.log('🔧 Service Worker instalando...');
-    
+// Instalación
+self.addEventListener('install', function (event) {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(urlsToCache).catch(err => {
-                console.warn('⚠️ Error cacheando URLs:', err);
-            });
-        }).then(() => {
-            console.log('✅ Caché de instalación completado');
+        caches.open(CACHE_NAME).then(function (cache) {
+            // Intentar cachear pero no fallar si alguno no existe
+            return Promise.all(
+                urlsToCache.map(function (url) {
+                    return cache.add(url).catch(function (err) {
+                        console.warn('No se pudo cachear:', url);
+                    });
+                })
+            );
+        }).then(function () {
             return self.skipWaiting();
         })
     );
 });
 
-// ============================================================================
-// EVENTO: ACTIVATE
-// ============================================================================
-
-self.addEventListener('activate', (event) => {
-    console.log('🚀 Service Worker activando...');
-    
+// Activación - limpiar cachés viejos
+self.addEventListener('activate', function (event) {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
+        caches.keys().then(function (cacheNames) {
             return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
-                        console.log('🗑️ Limpiando caché antiguo:', cacheName);
-                        return caches.delete(cacheName);
-                    }
+                cacheNames.filter(function (cacheName) {
+                    return cacheName !== CACHE_NAME;
+                }).map(function (cacheName) {
+                    return caches.delete(cacheName);
                 })
             );
-        }).then(() => {
-            console.log('✅ Service Worker activo');
+        }).then(function () {
             return self.clients.claim();
         })
     );
 });
 
-// ============================================================================
-// EVENTO: FETCH
-// ============================================================================
-
-self.addEventListener('fetch', (event) => {
-    const { request } = event;
-    const url = new URL(request.url);
+// Fetch - Network first para API, cache first para assets
+self.addEventListener('fetch', function (event) {
+    var request = event.request;
 
     // Solo GET
-    if (request.method !== 'GET') {
-        return;
-    }
+    if (request.method !== 'GET') return;
 
-    // Excluir APIs - siempre red
-    if (request.url.includes('/api/') || request.url.includes('settings.php')) {
-        event.respondWith(fetch(request).catch(() => {
-            // Si falla la red, intentar caché
-            return caches.match(request);
-        }));
-        return;
-    }
-
-    // ===== CACHE FIRST: Assets estáticos
-    event.respondWith(
-        caches.match(request).then((response) => {
-            if (response) {
-                return response;
-            }
-
-            return fetch(request)
-                .then((response) => {
-                    if (!response || response.status !== 200) {
-                        return response;
-                    }
-
-                    const responseToCache = response.clone();
-                    caches.open(RUNTIME_CACHE).then((cache) => {
-                        cache.put(request, responseToCache);
-                    });
-
-                    return response;
-                })
-                .catch((err) => {
-                    console.warn('❌ Offline:', url.pathname);
-                    // Fallback a index.html si es documento
-                    if (request.destination === 'document') {
-                        return caches.match('../index.html');
-                    }
+    // APIs siempre desde red
+    if (request.url.indexOf('/api/') !== -1) {
+        event.respondWith(
+            fetch(request).catch(function () {
+                return new Response(JSON.stringify({ error: true, mensaje: 'Sin conexión' }), {
+                    headers: { 'Content-Type': 'application/json' }
                 });
+            })
+        );
+        return;
+    }
+
+    // Assets: cache first, luego red
+    event.respondWith(
+        caches.match(request).then(function (response) {
+            if (response) return response;
+
+            return fetch(request).then(function (response) {
+                // No cachear respuestas fallidas
+                if (!response || response.status !== 200) {
+                    return response;
+                }
+
+                var responseToCache = response.clone();
+                caches.open(CACHE_NAME).then(function (cache) {
+                    cache.put(request, responseToCache);
+                });
+
+                return response;
+            });
         })
     );
 });
-
-// ============================================================================
-// MANEJO DE MENSAJES
-// ============================================================================
-
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
-});
-
-console.log('✅ Service Worker listo');
-

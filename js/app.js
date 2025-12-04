@@ -28,14 +28,20 @@ try {
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function () {
     loadHistory();
-    startScanner();
+    // Pequeño delay para asegurar que el DOM esté listo
+    setTimeout(function () {
+        startScanner();
+    }, 300);
 });
 
 // ============================================================================
 // SCANNER
 // ============================================================================
 function startScanner() {
-    if (isCameraBusy) return;
+    if (isCameraBusy) {
+        console.log('Camera busy, skipping start');
+        return;
+    }
     isCameraBusy = true;
 
     var errorMsg = document.getElementById('error-msg');
@@ -48,7 +54,7 @@ function startScanner() {
     }
 
     cleanup.then(function () {
-        return new Promise(function (resolve) { setTimeout(resolve, 150); });
+        return new Promise(function (resolve) { setTimeout(resolve, 200); });
     }).then(function () {
         var reader = document.getElementById('reader');
         if (reader) reader.innerHTML = '';
@@ -57,7 +63,7 @@ function startScanner() {
 
         // Config optimizada para Android bajo recursos
         var config = {
-            fps: 5,  // Reducido de 10 para menos uso de CPU
+            fps: 5,
             qrbox: { width: 180, height: 180 },
             aspectRatio: 1.0,
             disableFlip: false,
@@ -69,47 +75,79 @@ function startScanner() {
             ]
         };
 
-        var constraints = {
-            facingMode: currentFacingMode,
-            width: { ideal: 480 },  // Reducido de 640
-            height: { ideal: 480 }
-        };
-
-        return html5QrcodeScanner.start(constraints, config, onScanSuccess, function () { })
-            .catch(function (err) {
-                console.warn('Fallback to basic video mode', err);
-                return html5QrcodeScanner.start({ video: true }, config, onScanSuccess, function () { });
-            });
+        // IMPORTANTE: Solo pasar facingMode, no width/height
+        // La librería no acepta múltiples keys en el objeto
+        return html5QrcodeScanner.start(
+            { facingMode: currentFacingMode },
+            config,
+            onScanSuccess,
+            function () { }
+        ).catch(function (err) {
+            console.warn('Trying fallback with environment facing mode', err);
+            // Segundo intento: usar string directamente
+            return html5QrcodeScanner.start(
+                "environment",
+                config,
+                onScanSuccess,
+                function () { }
+            );
+        }).catch(function (err) {
+            console.warn('Trying fallback with user facing mode', err);
+            // Tercer intento: cámara frontal
+            return html5QrcodeScanner.start(
+                "user",
+                config,
+                onScanSuccess,
+                function () { }
+            );
+        });
     }).then(function () {
+        console.log('Scanner started successfully');
         isCameraBusy = false;
     }).catch(function (err) {
         console.error("Error cámara:", err);
         isCameraBusy = false;
-        if (errorMsg && err.message && err.message.indexOf('already under transition') === -1) {
-            errorMsg.textContent = 'Error: ' + err.message;
-            errorMsg.classList.add('visible');
+        if (errorMsg) {
+            var msg = err.message || String(err);
+            // No mostrar error de transición (es temporal)
+            if (msg.indexOf('transition') === -1) {
+                errorMsg.textContent = 'Cámara: ' + msg;
+                errorMsg.classList.add('visible');
+            }
         }
     });
 }
 
 function stopCurrentScanner() {
-    if (!html5QrcodeScanner) return Promise.resolve();
-
-    try {
-        var state = html5QrcodeScanner.getState();
-        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
-            return html5QrcodeScanner.stop().then(function () {
-                html5QrcodeScanner.clear();
-                html5QrcodeScanner = null;
-            });
+    return new Promise(function (resolve) {
+        if (!html5QrcodeScanner) {
+            resolve();
+            return;
         }
-        html5QrcodeScanner.clear();
-        html5QrcodeScanner = null;
-    } catch (e) {
-        console.warn("Error stopping scanner:", e);
-        html5QrcodeScanner = null;
-    }
-    return Promise.resolve();
+
+        try {
+            var state = html5QrcodeScanner.getState();
+            if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+                html5QrcodeScanner.stop().then(function () {
+                    try { html5QrcodeScanner.clear(); } catch (e) { }
+                    html5QrcodeScanner = null;
+                    resolve();
+                }).catch(function (e) {
+                    console.warn("Error stopping scanner:", e);
+                    html5QrcodeScanner = null;
+                    resolve();
+                });
+            } else {
+                try { html5QrcodeScanner.clear(); } catch (e) { }
+                html5QrcodeScanner = null;
+                resolve();
+            }
+        } catch (e) {
+            console.warn("Error in stopCurrentScanner:", e);
+            html5QrcodeScanner = null;
+            resolve();
+        }
+    });
 }
 
 function switchCamera() {
@@ -291,7 +329,6 @@ if (searchInput) {
 
 function closeSearch() {
     if (searchResults) searchResults.classList.remove('visible');
-    if (searchInput) searchInput.value = '';
 }
 
 function performManualSearch(query) {
@@ -325,9 +362,17 @@ function renderSearchResults(data) {
         el.onclick = function () {
             onScanSuccess(item.codigo);
             closeSearch();
+            if (searchInput) searchInput.value = '';
         };
         resultsList.appendChild(el);
     });
 
     if (searchResults) searchResults.classList.add('visible');
+}
+
+// ============================================================================
+// NAVEGACIÓN A ADMIN
+// ============================================================================
+function goToAdmin() {
+    window.location.href = 'admin.html';
 }
